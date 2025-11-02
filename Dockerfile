@@ -8,8 +8,8 @@ RUN addgroup -g 1000 node && \
 
 WORKDIR /home/node/app
 
-COPY package.json index.js /home/node/app/
-COPY lib /home/node/app/lib
+COPY package.json extension/index.js /home/node/app/
+COPY extension/lib /home/node/app/lib
 
 RUN mkdir -p /home/node/app/data && \
     apk add --no-cache git npm && \

@@ -7,3 +7,5 @@ node_modules/
 /playwright/.auth/
 config.json
 extension/data/settings.json
+.reg/bin
+.reg/etc
