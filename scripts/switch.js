@@ -5,10 +5,10 @@ const { HQPClient } = require("../extension/lib/hqp-client");
 function parseArgs(argv) {
   const options = {
     profile: null,
-    host: process.env.HQP_HOST || "192.168.1.61",
-    port: Number(process.env.HQP_PORT || 8088),
-    username: process.env.HQP_USER || "audiolinux",
-    password: process.env.HQP_PASS || "audiolinux",
+    host: process.env.HQP_HOST || "",
+    port: process.env.HQP_PORT ? Number(process.env.HQP_PORT) : 8088,
+    username: process.env.HQP_USER || "",
+    password: process.env.HQP_PASS || "",
     list: false,
   };
 
@@ -39,6 +39,13 @@ function normalizeProfileValue(value) {
 async function main() {
   const args = process.argv.slice(2);
   const options = parseArgs(args);
+
+  if (!options.host || !options.username || !options.password) {
+    console.error(
+      "Missing connection details. Provide host, username, and password via arguments or HQP_HOST/HQP_USER/HQP_PASS."
+    );
+    process.exit(1);
+  }
 
   const client = new HQPClient({
     host: options.host,

@@ -9,12 +9,14 @@ const { HQPClient } = require("./lib/hqp-client");
 
 const STORE_PATH = path.join(__dirname, "data", "settings.json");
 const DEFAULT_CONFIG = {
-  host: "192.168.1.61",
+  host: "",
   port: 8088,
-  username: "audiolinux",
-  password: "audiolinux",
+  username: "",
+  password: "",
   profile: "",
 };
+const MISSING_CREDENTIALS_MESSAGE =
+  "Enter HQPlayer host, username, and password in settings, then press Save.";
 
 let config = loadConfig();
 let availableProfiles = [];
@@ -34,18 +36,29 @@ const svc_settings = new RoonApiSettings(roon, {
     cb(buildSettingsState());
   },
   async save_settings(req, isDryRun, newSettings) {
-    const incoming = newSettings.values || {};
+    const incomingRaw = newSettings.values || {};
+    const normalized = normalizeSettings({ ...config, ...incomingRaw });
 
     if (isDryRun) {
-      req.send_complete("Success", { settings: buildSettingsState(incoming) });
+      req.send_complete("Success", {
+        settings: buildSettingsState(normalized),
+      });
       return;
     }
 
-    svc_status.set_status("profile_switcher", false, "Updating HQPlayer profile...");
+    config = normalized;
 
-    const previousConfig = { ...config };
+    if (!hasRequiredCredentials(config)) {
+      availableProfiles = [];
+      svc_status.set_status("profile_switcher", true, MISSING_CREDENTIALS_MESSAGE);
+      req.send_complete("Success", { settings: buildSettingsState() });
+      return;
+    }
+
+    svc_status.set_status("profile_switcher", false, "Connecting to HQPlayer...");
+
     try {
-      const { candidate, selectedProfile } = await testConnection(incoming, {
+      const { candidate, selectedProfile } = await testConnection(config, {
         loadProfile: true,
       });
       config = candidate;
@@ -53,12 +66,11 @@ const svc_settings = new RoonApiSettings(roon, {
 
       const message = selectedProfile
         ? `Loaded profile ${selectedProfile.title || selectedProfile.value || "[default]"}`
-        : "Updated HQPlayer connection.";
+        : "Connected to HQPlayer. Profiles refreshed.";
       svc_status.set_status("profile_switcher", false, message);
       req.send_complete("Success", { settings: buildSettingsState() });
     } catch (error) {
-      config = previousConfig;
-      const message = error.message || "Failed to update profile.";
+      const message = friendlyErrorMessage(error, error?.candidate || config);
       svc_status.set_status("profile_switcher", true, message);
       req.send_complete("Success", { settings: buildSettingsState() });
     }
@@ -70,8 +82,15 @@ roon.init_services({
 });
 
 async function startup() {
+  if (!hasRequiredCredentials(config)) {
+    availableProfiles = [];
+    svc_status.set_status("profile_switcher", true, MISSING_CREDENTIALS_MESSAGE);
+    roon.start_discovery();
+    return;
+  }
+
   try {
-    const { candidate } = await testConnection({}, { loadProfile: false });
+    const { candidate } = await testConnection(config, { loadProfile: false });
     config = candidate;
     saveConfig(config);
     svc_status.set_status("profile_switcher", false, "Ready.");
@@ -79,7 +98,7 @@ async function startup() {
     svc_status.set_status(
       "profile_switcher",
       true,
-      error.message || "Unable to reach HQPlayer."
+      friendlyErrorMessage(error, error?.candidate || config)
     );
   } finally {
     roon.start_discovery();
@@ -103,9 +122,9 @@ function loadConfig() {
   try {
     const raw = fs.readFileSync(STORE_PATH, "utf8");
     const parsed = JSON.parse(raw);
-    return { ...DEFAULT_CONFIG, ...parsed };
+    return normalizeSettings({ ...DEFAULT_CONFIG, ...parsed });
   } catch (error) {
-    return { ...DEFAULT_CONFIG };
+    return normalizeSettings({ ...DEFAULT_CONFIG });
   }
 }
 
@@ -125,7 +144,14 @@ function buildLayout() {
               ? entry.value
               : "",
         }))
-      : [{ title: "No profiles available", value: "" }];
+      : [
+          {
+            title: hasRequiredCredentials(config)
+              ? "No profiles available"
+              : "Save connection settings to load profiles",
+            value: "",
+          },
+        ];
 
   return [
     {
@@ -153,14 +179,10 @@ function buildLayout() {
   ];
 }
 
-function buildSettingsState(overrides = {}) {
-  const values = {
-    host: overrides.host ?? config.host ?? DEFAULT_CONFIG.host,
-    port: Number(overrides.port ?? config.port ?? DEFAULT_CONFIG.port),
-    username: overrides.username ?? config.username ?? DEFAULT_CONFIG.username,
-    password: overrides.password ?? config.password ?? DEFAULT_CONFIG.password,
-    profile: overrides.profile ?? config.profile ?? DEFAULT_CONFIG.profile,
-  };
+function buildSettingsState(overrides) {
+  const values = overrides
+    ? normalizeSettings({ ...config, ...overrides })
+    : { ...config };
 
   return {
     values,
@@ -191,38 +213,128 @@ function findProfile(profiles, value) {
   );
 }
 
-async function testConnection(overrides, { loadProfile }) {
-  const candidate = {
-    ...config,
-    ...overrides,
+async function testConnection(baseConfig, { loadProfile }) {
+  const candidate = normalizeSettings(baseConfig || {});
+
+  if (!hasRequiredCredentials(candidate)) {
+    availableProfiles = [];
+    const error = new Error(MISSING_CREDENTIALS_MESSAGE);
+    error.candidate = candidate;
+    throw error;
+  }
+
+  try {
+    const client = new HQPClient({
+      host: candidate.host,
+      port: candidate.port,
+      username: candidate.username,
+      password: candidate.password,
+    });
+
+    const profiles = await client.fetchProfiles();
+    availableProfiles = profiles;
+
+    let selectedProfile = findProfile(profiles, candidate.profile);
+    if (!selectedProfile) {
+      selectedProfile =
+        profiles.find(
+          (entry) =>
+            entry.value && entry.value.toLowerCase() === "sda"
+        ) || profiles[0] || null;
+    }
+
+    candidate.profile = selectedProfile ? selectedProfile.value || "" : "";
+
+    if (loadProfile && selectedProfile) {
+      await client.loadProfile(candidate.profile);
+    }
+
+    return { candidate, selectedProfile };
+  } catch (error) {
+    availableProfiles = [];
+    error.candidate = candidate;
+    throw error;
+  }
+}
+
+function normalizeSettings(values = {}) {
+  return {
+    host: stringValue(values.host),
+    port: normalizePort(values.port),
+    username: stringValue(values.username),
+    password: stringValue(values.password),
+    profile: stringValue(values.profile),
   };
+}
 
-  candidate.port = Number(candidate.port) || DEFAULT_CONFIG.port;
+function stringValue(value) {
+  if (value === undefined || value === null) return "";
+  if (typeof value === "string") return value.trim();
+  return String(value).trim();
+}
 
-  const client = new HQPClient({
-    host: candidate.host,
-    port: candidate.port,
-    username: candidate.username,
-    password: candidate.password,
-  });
+function normalizePort(value) {
+  const num = Number(value);
+  if (Number.isFinite(num) && num > 0) {
+    return Math.round(num);
+  }
+  return DEFAULT_CONFIG.port;
+}
 
-  const profiles = await client.fetchProfiles();
-  availableProfiles = profiles;
+function hasRequiredCredentials(cfg) {
+  return Boolean(cfg.host && cfg.username && cfg.password);
+}
 
-  let selectedProfile = findProfile(profiles, candidate.profile);
-  if (!selectedProfile) {
-    selectedProfile =
-      profiles.find(
-        (entry) =>
-          entry.value && entry.value.toLowerCase() === "sda"
-      ) || profiles[0] || null;
+function friendlyErrorMessage(error, candidate) {
+  const cfg = normalizeSettings(candidate || config || {});
+
+  if (!hasRequiredCredentials(cfg)) {
+    return MISSING_CREDENTIALS_MESSAGE;
   }
 
-  candidate.profile = selectedProfile ? selectedProfile.value || "" : "";
-
-  if (loadProfile && selectedProfile) {
-    await client.loadProfile(candidate.profile);
+  if (error && typeof error === "object") {
+    if (error.code === "ECONNREFUSED") {
+      return `Cannot reach HQPlayer at ${cfg.host}:${cfg.port}.`;
+    }
+    if (error.code === "ENOTFOUND") {
+      return `Unable to resolve host ${cfg.host}.`;
+    }
+    if (error.code === "EAI_AGAIN") {
+      return `DNS lookup failed for ${cfg.host}.`;
+    }
   }
 
-  return { candidate, selectedProfile };
+  const message =
+    (error && typeof error.message === "string" && error.message) ||
+    (error ? String(error) : "") ||
+    "";
+  const trimmedMessage = message.trim();
+
+  if (/401/.test(trimmedMessage)) {
+    return "Authentication failed. Verify HQPlayer username and password.";
+  }
+  if (/ECONNREFUSED/.test(trimmedMessage)) {
+    return `Cannot reach HQPlayer at ${cfg.host}:${cfg.port}.`;
+  }
+  if (/ENOTFOUND/.test(trimmedMessage)) {
+    return `Unable to resolve host ${cfg.host}.`;
+  }
+  if (/EAI_AGAIN/.test(trimmedMessage)) {
+    return `DNS lookup failed for ${cfg.host}.`;
+  }
+  if (/Failed to load profile form/.test(trimmedMessage)) {
+    return `Unable to load HQPlayer profile list from ${cfg.host}:${cfg.port}.`;
+  }
+  if (/Profile load request failed/.test(trimmedMessage)) {
+    return `Failed to load profile on HQPlayer at ${cfg.host}:${cfg.port}.`;
+  }
+  if (/Host is required|Username is required|Password is required/.test(trimmedMessage)) {
+    return MISSING_CREDENTIALS_MESSAGE;
+  }
+
+  if (trimmedMessage && trimmedMessage !== "[object Object]") {
+    return trimmedMessage;
+  }
+
+  return "Unexpected error contacting HQPlayer.";
 }
