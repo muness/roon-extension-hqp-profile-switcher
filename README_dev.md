@@ -43,6 +43,8 @@ npm run roon-extension
 
 Within Roon: go to **Settings → Extensions**, enable “HQP Profile Switcher,” then open the settings gear to enter HQPlayer credentials and select a profile. Status updates appear beneath the extension name.
 
+After updating host, port, username, and password, press **Save** in the dialog to reconnect and refresh the profile dropdown.
+
 ### Persisted Data
 
 Runtime settings persist in `extension/data/settings.json`. Delete the file to reset credentials between tests.

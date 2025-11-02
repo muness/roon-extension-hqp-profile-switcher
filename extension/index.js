@@ -16,18 +16,18 @@ const DEFAULT_CONFIG = {
   profile: "",
 };
 const MISSING_CREDENTIALS_MESSAGE =
-  "Enter HQPlayer host, username, and password in settings, then press Save.";
+  "Awaiting HQPlayer credentials. Enter host, username, and password, then press Save to connect.";
 
 let config = loadConfig();
 let availableProfiles = [];
 
 const roon = new RoonApi({
   extension_id: "muness.hqp.profile.switcher",
-  display_name: "HQPlayer Profile Switcher",
-  display_version: "1.0.0",
-  publisher: "muness",
+  display_name: "HQPlayer Embedded Profile Switcher",
+  display_version: "1.0.1",
+  publisher: "Unofficial HQPlayer Extension",
   email: "support@example.com",
-  website: "https://github.com/muness/hqp-profile-switcher",
+  website: "https://github.com/muness/roon-extension-hqp-profile-switcher",
 });
 
 const svc_status = new RoonApiStatus(roon);
@@ -50,12 +50,12 @@ const svc_settings = new RoonApiSettings(roon, {
 
     if (!hasRequiredCredentials(config)) {
       availableProfiles = [];
-      svc_status.set_status("profile_switcher", true, MISSING_CREDENTIALS_MESSAGE);
+      svc_status.set_status(MISSING_CREDENTIALS_MESSAGE, false);
       req.send_complete("Success", { settings: buildSettingsState() });
       return;
     }
 
-    svc_status.set_status("profile_switcher", false, "Connecting to HQPlayer...");
+    svc_status.set_status("Connecting to HQPlayer...", false);
 
     try {
       const { candidate, selectedProfile } = await testConnection(config, {
@@ -67,12 +67,16 @@ const svc_settings = new RoonApiSettings(roon, {
       const message = selectedProfile
         ? `Loaded profile ${selectedProfile.title || selectedProfile.value || "[default]"}`
         : "Connected to HQPlayer. Profiles refreshed.";
-      svc_status.set_status("profile_switcher", false, message);
+      svc_status.set_status(message, false);
       req.send_complete("Success", { settings: buildSettingsState() });
+      svc_settings.update_settings(buildSettingsState());
     } catch (error) {
       const message = friendlyErrorMessage(error, error?.candidate || config);
-      svc_status.set_status("profile_switcher", true, message);
+      const isMissing = message === MISSING_CREDENTIALS_MESSAGE;
+      const display = isMissing ? message : `❌ ${message}`;
+      svc_status.set_status(display, !isMissing);
       req.send_complete("Success", { settings: buildSettingsState() });
+      svc_settings.update_settings(buildSettingsState());
     }
   },
 });
@@ -84,7 +88,7 @@ roon.init_services({
 async function startup() {
   if (!hasRequiredCredentials(config)) {
     availableProfiles = [];
-    svc_status.set_status("profile_switcher", true, MISSING_CREDENTIALS_MESSAGE);
+    svc_status.set_status(MISSING_CREDENTIALS_MESSAGE, false);
     roon.start_discovery();
     return;
   }
@@ -93,13 +97,12 @@ async function startup() {
     const { candidate } = await testConnection(config, { loadProfile: false });
     config = candidate;
     saveConfig(config);
-    svc_status.set_status("profile_switcher", false, "Ready.");
+    svc_status.set_status("Ready.", false);
   } catch (error) {
-    svc_status.set_status(
-      "profile_switcher",
-      true,
-      friendlyErrorMessage(error, error?.candidate || config)
-    );
+    const message = friendlyErrorMessage(error, error?.candidate || config);
+    const isMissing = message === MISSING_CREDENTIALS_MESSAGE;
+    const display = isMissing ? message : `❌ ${message}`;
+    svc_status.set_status(display, !isMissing);
   } finally {
     roon.start_discovery();
   }
@@ -284,6 +287,7 @@ function normalizePort(value) {
 function hasRequiredCredentials(cfg) {
   return Boolean(cfg.host && cfg.username && cfg.password);
 }
+
 
 function friendlyErrorMessage(error, candidate) {
   const cfg = normalizeSettings(candidate || config || {});
