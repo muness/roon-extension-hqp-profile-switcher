@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   hqp-profile-switcher:
     image: docker.io/muness/roon-extension-hqp-profile-switcher:latest
