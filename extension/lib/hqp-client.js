@@ -196,7 +196,16 @@ class HQPClient {
     const regex = new RegExp(`${attribute}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s>]+))`, "i");
     const match = tag.match(regex);
     if (!match) return "";
-    return match[1] ?? match[2] ?? match[3] ?? "";
+    if (match[1] !== undefined && match[1] !== null && match[1] !== "") {
+      return match[1];
+    }
+    if (match[2] !== undefined && match[2] !== null && match[2] !== "") {
+      return match[2];
+    }
+    if (match[3] !== undefined && match[3] !== null && match[3] !== "") {
+      return match[3];
+    }
+    return "";
   }
 
   parseHiddenInputs(html) {
