@@ -45,6 +45,10 @@ Within Roon: go to **Settings → Extensions**, enable “HQP Profile Switcher,�
 
 After updating host, port, username, and password, press **Save** in the dialog to reconnect and refresh the profile dropdown.
 
+For a quick sanity check, the embedded web UI is available at `http://localhost:9331/ui` (or whatever `HQP_UI_PORT` you configure). It mirrors the current status and lets you load profiles without opening the Roon dialog.
+
+If HQPlayer takes a while to restart after a profile change, increase `HQP_RESTART_GRACE_MS` (default 10000) so transient connection errors are treated as informational.
+
 ### Persisted Data
 
 Runtime settings persist in `extension/data/settings.json`. Delete the file to reset credentials between tests.

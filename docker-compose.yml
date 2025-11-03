@@ -1,0 +1,15 @@
+version: "3.9"
+
+services:
+  hqp-profile-switcher:
+    image: docker.io/muness/roon-extension-hqp-profile-switcher:latest
+    container_name: hqp-profile-switcher
+    restart: unless-stopped
+    environment:
+      - TZ=UTC
+      - ROON_EXTENSION_PORT=9330
+      - HQP_UI_PORT=9331
+      - HQP_RESTART_GRACE_MS=10000
+    ports:
+      - "9330:9330"
+      - "9331:9331"

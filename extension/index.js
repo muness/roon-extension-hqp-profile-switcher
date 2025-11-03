@@ -5,6 +5,7 @@ const path = require("path");
 const RoonApi = require("node-roon-api");
 const RoonApiSettings = require("node-roon-api-settings");
 const RoonApiStatus = require("node-roon-api-status");
+const { startUiServer } = require("./ui/server");
 const { HQPClient } = require("./lib/hqp-client");
 
 const STORE_PATH = path.join(__dirname, "data", "settings.json");
@@ -17,20 +18,64 @@ const DEFAULT_CONFIG = {
 };
 const MISSING_CREDENTIALS_MESSAGE =
   "Awaiting HQPlayer credentials. Enter host, username, and password, then press Save to connect.";
+const EXTENSION_PORT = Number(process.env.ROON_EXTENSION_PORT || 9330);
+const UI_PORT = Number(
+  process.env.HQP_UI_PORT || (EXTENSION_PORT === 9330 ? 9331 : EXTENSION_PORT + 1)
+);
+const PROFILE_RESTART_GRACE_MS = Number(process.env.HQP_RESTART_GRACE_MS || 10000);
 
 let config = loadConfig();
 let availableProfiles = [];
+let expectedRestartUntil = 0;
 
 const roon = new RoonApi({
   extension_id: "muness.hqp.profile.switcher",
   display_name: "HQPlayer Embedded Profile Switcher",
-  display_version: "1.0.1",
-  publisher: "Unofficial HQPlayer Extension",
+  display_version: "1.0.2",
+  publisher: "Unofficial HQPlayer Tools",
   email: "support@example.com",
   website: "https://github.com/muness/roon-extension-hqp-profile-switcher",
 });
 
+// The Node Roon API listens on TCP 9330 by default; expose it explicitly so compose/packaging stays in sync.
+roon.service_port = EXTENSION_PORT;
+
 const svc_status = new RoonApiStatus(roon);
+let lastStatus = { message: "Starting...", isError: false };
+
+function isRestartGraceActive() {
+  return expectedRestartUntil && Date.now() < expectedRestartUntil;
+}
+
+function isConnectivityErrorMessage(message) {
+  if (!message) return false;
+  const lowered = String(message).toLowerCase();
+  return (
+    lowered.indexOf("cannot reach hqplayer") !== -1 ||
+    lowered.indexOf("unable to load hqplayer") !== -1 ||
+    lowered.indexOf("failed to load profile on hqplayer") !== -1 ||
+    lowered.indexOf("unable to resolve host") !== -1 ||
+    lowered.indexOf("dns lookup failed") !== -1
+  );
+}
+
+function normalizeStatus(message, isError) {
+  if (isError && isRestartGraceActive() && isConnectivityErrorMessage(message)) {
+    return {
+      message: "Waiting for HQPlayer to restart after profile change...",
+      isError: false,
+    };
+  }
+  return { message, isError };
+}
+
+function updateStatus(message, isError) {
+  const adjusted = normalizeStatus(message, isError);
+  lastStatus = adjusted;
+  svc_status.set_status(adjusted.message, adjusted.isError);
+}
+
+updateStatus("Starting...", false);
 const svc_settings = new RoonApiSettings(roon, {
   get_settings(cb) {
     cb(buildSettingsState());
@@ -50,12 +95,12 @@ const svc_settings = new RoonApiSettings(roon, {
 
     if (!hasRequiredCredentials(config)) {
       availableProfiles = [];
-      svc_status.set_status(MISSING_CREDENTIALS_MESSAGE, false);
+      updateStatus(MISSING_CREDENTIALS_MESSAGE, false);
       req.send_complete("Success", { settings: buildSettingsState() });
       return;
     }
 
-    svc_status.set_status("Connecting to HQPlayer...", false);
+    updateStatus("Connecting to HQPlayer...", false);
 
     try {
       const { candidate, selectedProfile } = await testConnection(config, {
@@ -67,14 +112,14 @@ const svc_settings = new RoonApiSettings(roon, {
       const message = selectedProfile
         ? `Loaded profile ${selectedProfile.title || selectedProfile.value || "[default]"}`
         : "Connected to HQPlayer. Profiles refreshed.";
-      svc_status.set_status(message, false);
+      updateStatus(message, false);
       req.send_complete("Success", { settings: buildSettingsState() });
       svc_settings.update_settings(buildSettingsState());
     } catch (error) {
-      const message = friendlyErrorMessage(error, error?.candidate || config);
+      const message = friendlyErrorMessage(error, (error && error.candidate) || config);
       const isMissing = message === MISSING_CREDENTIALS_MESSAGE;
-      const display = isMissing ? message : `❌ ${message}`;
-      svc_status.set_status(display, !isMissing);
+      const display = isMissing ? message : `[ERROR] ${message}`;
+      updateStatus(display, !isMissing);
       req.send_complete("Success", { settings: buildSettingsState() });
       svc_settings.update_settings(buildSettingsState());
     }
@@ -88,7 +133,7 @@ roon.init_services({
 async function startup() {
   if (!hasRequiredCredentials(config)) {
     availableProfiles = [];
-    svc_status.set_status(MISSING_CREDENTIALS_MESSAGE, false);
+    updateStatus(MISSING_CREDENTIALS_MESSAGE, false);
     roon.start_discovery();
     return;
   }
@@ -97,12 +142,12 @@ async function startup() {
     const { candidate } = await testConnection(config, { loadProfile: false });
     config = candidate;
     saveConfig(config);
-    svc_status.set_status("Ready.", false);
+    updateStatus("Ready.", false);
   } catch (error) {
-    const message = friendlyErrorMessage(error, error?.candidate || config);
+    const message = friendlyErrorMessage(error, (error && error.candidate) || config);
     const isMissing = message === MISSING_CREDENTIALS_MESSAGE;
-    const display = isMissing ? message : `❌ ${message}`;
-    svc_status.set_status(display, !isMissing);
+    const display = isMissing ? message : `[ERROR] ${message}`;
+    updateStatus(display, !isMissing);
   } finally {
     roon.start_discovery();
   }
@@ -236,6 +281,7 @@ async function testConnection(baseConfig, { loadProfile }) {
 
     const profiles = await client.fetchProfiles();
     availableProfiles = profiles;
+    expectedRestartUntil = 0;
 
     let selectedProfile = findProfile(profiles, candidate.profile);
     if (!selectedProfile) {
@@ -250,6 +296,7 @@ async function testConnection(baseConfig, { loadProfile }) {
 
     if (loadProfile && selectedProfile) {
       await client.loadProfile(candidate.profile);
+      expectedRestartUntil = Date.now() + PROFILE_RESTART_GRACE_MS;
     }
 
     return { candidate, selectedProfile };
@@ -286,6 +333,68 @@ function normalizePort(value) {
 
 function hasRequiredCredentials(cfg) {
   return Boolean(cfg.host && cfg.username && cfg.password);
+}
+
+function publicConfig() {
+  return {
+    host: config.host,
+    port: config.port,
+    username: config.username,
+    profile: config.profile,
+  };
+}
+
+async function refreshProfiles() {
+  const { candidate } = await testConnection(config, { loadProfile: false });
+  config = candidate;
+  return availableProfiles;
+}
+
+
+async function loadProfileByValue(profileInput, originLabel) {
+  if (!hasRequiredCredentials(config)) {
+    const error = new Error(MISSING_CREDENTIALS_MESSAGE);
+    error.code = "MISSING_CREDENTIALS";
+    throw error;
+  }
+
+  const labelSource = originLabel || "external caller";
+  const normalized =
+    profileInput === undefined || profileInput === null
+      ? ""
+      : String(profileInput).trim();
+
+  if (!normalized) {
+    const error = new Error("Profile value required.");
+    error.code = "INPUT";
+    throw error;
+  }
+
+  const profiles =
+    availableProfiles.length > 0 ? availableProfiles : await refreshProfiles();
+
+  const target = findProfile(profiles, normalized);
+
+  if (!target) {
+    const error = new Error(`Profile '${normalized}' not found.`);
+    error.code = "NOT_FOUND";
+    throw error;
+  }
+
+  const client = new HQPClient({
+    host: config.host,
+    port: config.port,
+    username: config.username,
+    password: config.password,
+  });
+
+  await client.loadProfile(target.value);
+
+  const label = target.title || target.value || "[default]";
+  updateStatus(`Loaded profile ${label} via ${labelSource}.`, false);
+  expectedRestartUntil = Date.now() + PROFILE_RESTART_GRACE_MS;
+
+  return target;
 }
 
 
@@ -342,3 +451,17 @@ function friendlyErrorMessage(error, candidate) {
 
   return "Unexpected error contacting HQPlayer.";
 }
+
+startUiServer({
+  uiPort: UI_PORT,
+  roonPort: EXTENSION_PORT,
+  getStatus: () => lastStatus,
+  getConfig: () => publicConfig(),
+  hasCredentials: () => hasRequiredCredentials(config),
+  listProfiles: () => availableProfiles.slice(),
+  refreshProfiles: () => refreshProfiles(),
+  loadProfile: (value) => loadProfileByValue(value, "web UI"),
+  formatError: (error) => friendlyErrorMessage(error, (error && error.candidate) || config),
+  missingCredentialsMessage: MISSING_CREDENTIALS_MESSAGE,
+  isExpectingRestart: () => isRestartGraceActive(),
+});

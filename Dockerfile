@@ -10,6 +10,7 @@ WORKDIR /home/node/app
 
 COPY package.json extension/index.js /home/node/app/
 COPY extension/lib /home/node/app/lib
+COPY extension/ui /home/node/app/ui
 
 RUN mkdir -p /home/node/app/data && \
     apk add --no-cache git npm && \
