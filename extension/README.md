@@ -14,7 +14,7 @@ NOTE: This is an unofficial switcher that relies on HQPlayer Embedded's web inte
 - `data/settings.json` – Persisted credentials and last-selected profile (written at runtime).
 - After entering host, port, username, and password, press **Save** to connect and refresh the profile dropdown.
 - A lightweight web UI is served from `/ui` (defaults to port `9331`) for quick status checks and ad-hoc profile loads.
-- Environment tweaks: set `ROON_EXTENSION_PORT` (default `9330`), `HQP_UI_PORT` (default `9331`), and `HQP_RESTART_GRACE_MS` (default `10000` milliseconds) to wait for HQPlayer reboots after profile loads.
+- Environment tweaks: set `ROON_EXTENSION_PORT` (default `9330`), `HQP_UI_PORT` (default `9331`), and `HQP_RESTART_GRACE_MS` (default `10000` milliseconds) to wait for HQPlayer reboots after profile loads. Prefer running the container with `network_mode: host`; if you cannot, publish both TCP and UDP 9330 manually.
 
 ## Running Locally
 

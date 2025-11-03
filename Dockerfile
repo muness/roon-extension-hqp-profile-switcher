@@ -14,5 +14,6 @@ COPY extension/index.js ./index.js
 COPY extension/lib ./lib
 COPY extension/ui  ./ui
 
+RUN mkdir -p /home/node/app/data && chown -R node:node /home/node
 USER node
 CMD ["node", "."]

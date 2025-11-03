@@ -41,14 +41,12 @@ services:
     image: docker.io/muness/roon-extension-hqp-profile-switcher:latest
     container_name: hqp-profile-switcher
     restart: unless-stopped
+    network_mode: host
     environment:
       - TZ=UTC
       - ROON_EXTENSION_PORT=9330
       - HQP_UI_PORT=9331
       - HQP_RESTART_GRACE_MS=10000
-    ports:
-      - "9330:9330"
-      - "9331:9331"
 ```
 
 Start it with:
@@ -58,7 +56,7 @@ docker compose up -d
 ```
 
 Once running, point Roon to the host (Settings → Extensions) and configure HQPlayer credentials from the extension’s settings panel.
-Set `ROON_EXTENSION_PORT` if you need the service to listen on a port other than `9330`.
+Host networking is the simplest path on Linux/NAS devices. If you cannot use it, remove `network_mode: host`, expose both TCP and UDP 9330 manually, and set `ROON_EXTENSION_PORT` if you need the service to listen on a different port.
 
 The built-in web UI is available at `http://<host>:9331/ui` (or whatever you set `HQP_UI_PORT` to) for quick profile checks and manual switches. Adjust `HQP_RESTART_GRACE_MS` if HQPlayer takes longer than the default 60s to come back after loading a profile.
 

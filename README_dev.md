@@ -44,6 +44,7 @@ npm run roon-extension
 Within Roon: go to **Settings → Extensions**, enable “HQP Profile Switcher,” then open the settings gear to enter HQPlayer credentials and select a profile. Status updates appear beneath the extension name.
 
 After updating host, port, username, and password, press **Save** in the dialog to reconnect and refresh the profile dropdown.
+Host networking is recommended for Docker deployments so Roon discovery sees the extension immediately. If you must use bridge networking, remember to publish both TCP and UDP 9330.
 
 For a quick sanity check, the embedded web UI is available at `http://localhost:9331/ui` (or whatever `HQP_UI_PORT` you configure). It mirrors the current status and lets you load profiles without opening the Roon dialog.
 
