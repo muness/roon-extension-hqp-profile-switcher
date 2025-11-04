@@ -1,5 +1,4 @@
-ARG build_arch=amd64
-FROM multiarch/alpine:${build_arch}-v3.22
+FROM alpine:3.22
 
 RUN apk add --no-cache nodejs-current npm tzdata git
 
