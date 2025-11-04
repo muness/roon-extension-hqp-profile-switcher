@@ -1,19 +1,20 @@
-FROM node:22-bookworm-slim
+ARG build_arch=amd64
+FROM multiarch/alpine:${build_arch}-v3.22
 
-# security refresh
-RUN set -eux; apt-get update; apt-get upgrade -y --no-install-recommends; rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache nodejs-current npm tzdata git
 
 WORKDIR /home/node/app
-
-# deps first for cache
 COPY package.json package-lock.json* ./
 RUN npm ci --omit=dev
-
-# app
 COPY extension/index.js ./index.js
 COPY extension/lib ./lib
 COPY extension/ui  ./ui
 
-RUN mkdir -p /home/node/app/data && chown -R node:node /home/node
+# ensure runtime perms
+RUN addgroup --gid 1000 node || true \
+ && adduser  --uid 1000 --ingroup node --shell /bin/sh --home /home/node --disabled-password node || true \
+ && install -d -o node -g node /home/node/app/data \
+ && chown -R node:node /home/node
+
 USER node
-CMD ["node", "."]
+CMD ["node","."]
