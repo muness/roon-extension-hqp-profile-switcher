@@ -235,13 +235,39 @@ class HQPClient {
     let optionMatch;
     while ((optionMatch = optionRegex.exec(content)) !== null) {
       const text = optionMatch[2].replace(/\s+/g, " ").trim();
-      const value = this.getAttribute(optionMatch[0], "value") || text;
+      const rawValue = this.getAttribute(optionMatch[0], "value") || text;
+      const value = rawValue !== undefined && rawValue !== null ? String(rawValue).trim() : "";
       options.push({
         value: value,
-        title: text || value || "[default]",
+        title: text || value || "Unnamed profile",
       });
     }
-    return options;
+    return this.sanitizeProfiles(options);
+  }
+
+  sanitizeProfiles(list) {
+    if (!Array.isArray(list)) return [];
+    return list
+      .map((entry) => {
+        if (!entry || typeof entry !== "object") return null;
+        const raw = entry.value !== undefined && entry.value !== null ? String(entry.value) : "";
+        const value = raw.trim();
+        const slug = value.toLowerCase().replace(/[^a-z0-9]+/g, "");
+        if (!value || !slug.length || slug === "default") {
+          console.log(
+            "[HQP][SC] Dropping HQP profile option value=%s title=%s",
+            value || "<empty>",
+            entry.title || "<none>"
+          );
+          return null;
+        }
+        const title = entry.title && String(entry.title).trim();
+        return {
+          value,
+          title: title || value || "Unnamed profile",
+        };
+      })
+      .filter(Boolean);
   }
 
   async fetchProfileForm() {
@@ -261,11 +287,15 @@ class HQPClient {
 
   async fetchProfiles() {
     const form = await this.fetchProfileForm();
-    return form.profiles;
+    return this.sanitizeProfiles(form.profiles);
   }
 
   async loadProfile(profileValue) {
     if (profileValue === undefined || profileValue === null) {
+      throw new Error("Profile value is required");
+    }
+    const trimmed = String(profileValue).trim();
+    if (!trimmed || trimmed.toLowerCase() === "default") {
       throw new Error("Profile value is required");
     }
 
