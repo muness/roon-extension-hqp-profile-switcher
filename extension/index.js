@@ -68,7 +68,7 @@ function isTransientProfileLoadError(error) {
 const roon = new RoonApi({
   extension_id: "muness.hqp.profile.switcher",
   display_name: "HQP Profile Switcher",
-  display_version: "1.1.0",
+  display_version: "1.1.1",
   publisher: "Unofficial HQPlayer Tools",
   email: "support@example.com",
   website: "https://github.com/muness/roon-extension-hqp-profile-switcher",
