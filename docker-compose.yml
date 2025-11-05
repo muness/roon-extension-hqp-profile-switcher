@@ -12,3 +12,8 @@ services:
       - "9330:9330/tcp"
       - "9330:9330/udp"
       - "9331:9331/tcp"
+    volumes:
+      - hqp-profile-switcher-data:/home/node/app/data
+
+volumes:
+  hqp-profile-switcher-data:

@@ -31,23 +31,13 @@ npm run roon-extension
 
 For Docker builds and publishing via rooExtend, follow the instructions in `README_dev.md`.
 
+### Extended Source Controls
+
+Extended source controls are now exposed so you can trigger HQPlayer profile switches directly from the HQPlayer source. After the controls are added, open the HQPlayer source in the Roon “Speaker” interface and press the power button to reveal them.
+
 ### Docker Compose (no Extension Manager)
 
-If you simply want to run the extension directly on a Docker host (QNAP, NAS, mini PC) without TheAppgineer’s Extension Manager, use the provided `docker-compose.yml`:
-
-```yaml
-services:
-  hqp-profile-switcher:
-    image: docker.io/muness/roon-extension-hqp-profile-switcher:latest
-    container_name: hqp-profile-switcher
-    restart: unless-stopped
-    network_mode: host
-    environment:
-      - TZ=UTC
-      - ROON_EXTENSION_PORT=9330
-      - HQP_UI_PORT=9331
-      - HQP_RESTART_GRACE_MS=10000
-```
+If you want to run the extension directly on a Docker host (QNAP, NAS, mini PC) without TheAppgineer’s Extension Manager, use the provided `docker-compose.yml`. The example maps the necessary ports and mounts a persistent volume at `/home/node/app/data` so the HQPlayer credentials survive container upgrades and reinstalls.
 
 Start it with:
 
@@ -56,7 +46,6 @@ docker compose up -d
 ```
 
 Once running, point Roon to the host (Settings → Extensions) and configure HQPlayer credentials from the extension’s settings panel.
-Host networking is the simplest path on Linux/NAS devices. If you cannot use it, remove `network_mode: host`, expose both TCP and UDP 9330 manually, and set `ROON_EXTENSION_PORT` if you need the service to listen on a different port.
 
 The built-in web UI is available at `http://<host>:9331/ui` (or whatever you set `HQP_UI_PORT` to) for quick profile checks and manual switches. Adjust `HQP_RESTART_GRACE_MS` if HQPlayer takes longer than the default 60s to come back after loading a profile.
 
