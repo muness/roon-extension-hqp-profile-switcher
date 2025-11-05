@@ -55,7 +55,9 @@
     const hostCell = cfg.host ? escapeHtml(String(cfg.host)) : "<em>not set</em>";
     const portCell = cfg.port ? escapeHtml(String(cfg.port)) : "--";
     const userCell = cfg.username ? escapeHtml(String(cfg.username)) : "<em>not set</em>";
-    const profileCell = cfg.profile ? escapeHtml(String(cfg.profile)) : "[default]";
+    const profileCell = cfg.profile
+      ? escapeHtml(String(cfg.profile))
+      : '<em>not selected</em>';
     const sourceNameCell = cfg.source_control_name
       ? escapeHtml(String(cfg.source_control_name))
       : escapeHtml("Profile");
@@ -89,11 +91,24 @@
       return;
     }
 
+    const usable = items.filter(function (item) {
+      if (!item) return false;
+      const value = item.value !== undefined && item.value !== null ? String(item.value).trim() : "";
+      if (!value.length) return false;
+      return value.toLowerCase() !== "default";
+    });
+
+    if (!usable.length) {
+      profileSelect.innerHTML = '<option value="">No profiles available</option>';
+      profileSelect.disabled = true;
+      return;
+    }
+
     profileSelect.disabled = false;
-    profileSelect.innerHTML = items
+    profileSelect.innerHTML = usable
       .map(function (item) {
-        const label = item.title || item.value || "[default]";
-        const value = item.value || "";
+        const value = String(item.value).trim();
+        const label = item.title || value || "Unnamed profile";
         return (
           '<option value="' + escapeHtml(String(value)) + '">' + escapeHtml(String(label)) + "</option>"
         );

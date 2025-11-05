@@ -129,7 +129,7 @@ const svc_settings = new RoonApiSettings(roon, {
       initializeSourceControl();
 
       const message = selectedProfile
-        ? `Loaded profile ${selectedProfile.title || selectedProfile.value || "[default]"}`
+        ? `Loaded profile ${selectedProfile.title || selectedProfile.value || "Unnamed profile"}`
         : "Connected to HQPlayer. Profiles refreshed.";
       updateStatus(message, false);
       req.send_complete("Success", { settings: buildSettingsState() });
@@ -243,11 +243,8 @@ function buildLayout(values) {
 function buildProfileOptions() {
   if (availableProfiles.length > 0) {
     return availableProfiles.map((entry) => ({
-      title: entry.title || entry.value || "[default]",
-      value:
-        entry.value !== undefined && entry.value !== null
-          ? entry.value
-          : "",
+      title: entry.title || entry.value || "Unnamed profile",
+      value: stringValue(entry.value),
     }));
   }
 
@@ -343,13 +340,14 @@ async function testConnection(baseConfig, { loadProfile }) {
 
 function normalizeSettings(values = {}) {
   const profileValue = stringValue(values.profile);
+  const normalizedProfile = slugifyControlKey(profileValue) === "default" ? "" : profileValue;
 
   return {
     host: stringValue(values.host),
     port: normalizePort(values.port),
     username: stringValue(values.username),
     password: stringValue(values.password),
-    profile: profileValue,
+    profile: normalizedProfile,
   };
 }
 
@@ -488,17 +486,14 @@ function destroySourceControlDevice(key) {
     );
   }
   sourceControlDevices.delete(key);
-  logSourceControl(
-    "Destroyed device for value=%s key=%s",
-    entry && entry.value ? entry.value : "[default]",
-    key
-  );
+  const destroyedLabel = entry && entry.value ? entry.value : "<none>";
+  logSourceControl("Destroyed device for value=%s key=%s", destroyedLabel, key);
 }
 
 function profileDisplayTitle(profile) {
-  if (!profile) return "[default]";
+  if (!profile) return "Unnamed profile";
   const label = profile.title || profile.value;
-  return label ? String(label) : "[default]";
+  return label ? String(label) : "Unnamed profile";
 }
 
 function profileValueRaw(profile) {
@@ -516,6 +511,15 @@ function profileValueKeyFromValue(value) {
 function profileValueKey(profile) {
   if (!profile) return "__default__";
   return profileValueKeyFromValue(profile.value);
+}
+
+function profileHasValue(profile) {
+  if (!profile) return false;
+  const value = profile.value !== undefined && profile.value !== null ? stringValue(profile.value) : "";
+  if (!value.length) return false;
+  const slug = slugifyControlKey(value);
+  if (!slug.length) return false;
+  return slug !== "default";
 }
 
 function normalizeRequestedStatus(input) {
@@ -559,7 +563,7 @@ function resolveProfileForValue(value) {
 
   return {
     value: normalized,
-    title: normalized ? normalized : "[default]",
+    title: normalized ? normalized : "Unnamed profile",
   };
 }
 
@@ -596,11 +600,12 @@ function controlKeyForProfile(value) {
 }
 
 function buildControlState(profile, value) {
+  const normalizedValue = stringValue(value);
   return {
-    control_key: controlKeyForProfile(value),
+    control_key: controlKeyForProfile(normalizedValue),
     display_name: profileDisplayTitle(profile),
     supports_standby: true,
-    status: determineControlStatus(value),
+    status: determineControlStatus(normalizedValue),
   };
 }
 
@@ -616,12 +621,7 @@ function listProfilesForControls() {
     return availableProfiles.slice();
   }
 
-  return [
-    {
-      value: currentProfileValue || "",
-      title: currentProfileValue ? currentProfileValue : "[default]",
-    },
-  ];
+  return [];
 }
 
 function updateSourceControlSelections() {
@@ -638,10 +638,15 @@ async function processProfileSelection(req, profileValue) {
 
   const value = stringValue(profileValue);
   const profile = lookupProfileForValue(value);
+  if (!profileHasValue(profile)) {
+    logSourceControl("Rejected convenience switch for missing profile identifier (value=%s)", value || "<none>");
+    req.send_complete("Failed", { error: "Profile identifier is required." });
+    return;
+  }
   const label = profileDisplayTitle(profile);
   const originLabel = `source control (${label})`;
 
-  logSourceControl("Convenience switch requested for value=%s label=%s", value || "[default]", label);
+  logSourceControl("Convenience switch requested for value=%s label=%s", value || "<none>", label);
 
   const previousValue = currentProfileValue;
   currentProfileValue = value;
@@ -658,7 +663,7 @@ async function processProfileSelection(req, profileValue) {
     const message = friendlyErrorMessage(error, (error && error.candidate) || config);
     logSourceControl(
       "Convenience switch failed for value=%s label=%s error=%s",
-      value || "[default]",
+      value || "<none>",
       label,
       message
     );
@@ -673,20 +678,30 @@ async function handleProfileConvenienceSwitch(req, profileValue) {
 function handleProfileStandby(req, profileValue) {
   const requestedStatus = resolveRequestedStatus(req, "selected");
   const value = stringValue(profileValue);
-  logSourceControl("Standby requested for value=%s status=%s", value || "[default]", requestedStatus);
+  logSourceControl("Standby requested for value=%s status=%s", value || "<none>", requestedStatus);
 
   if (requestedStatus === "selected") {
-    processProfileSelection(req, profileValue);
-    return;
+    return processProfileSelection(req, profileValue);
   }
 
   const key = profileValueKeyFromValue(value);
-  const updated = updateDeviceStateByKey(key, { status: requestedStatus }, { value });
+  const wasActive = profileValueKeyFromValue(currentProfileValue) === key;
+  if (wasActive) {
+    currentProfileValue = "";
+  }
+
+  const nextStatus = requestedStatus === "indeterminate" ? "indeterminate" : "deselected";
+  const updated = updateDeviceStateByKey(key, { status: nextStatus }, { value });
   if (updated) {
     logSourceControl("Standby update -> key=%s status=%s", updated.control_key, updated.status);
   }
 
+  if (wasActive) {
+    updateSourceControlSelections();
+  }
+
   req.send_complete("Success");
+  return;
 }
 
 function recordSourceControlProfileChange(profile, status, options = {}) {
@@ -771,6 +786,11 @@ async function loadProfileByValue(profileInput, originLabel, options = {}) {
     error.code = "NOT_FOUND";
     throw error;
   }
+  if (!profileHasValue(target)) {
+    const error = new Error("Profile is missing an identifier.");
+    error.code = "INVALID";
+    throw error;
+  }
 
   const client = new HQPClient({
     host: config.host,
@@ -781,7 +801,7 @@ async function loadProfileByValue(profileInput, originLabel, options = {}) {
 
   await client.loadProfile(target.value);
 
-  const label = target.title || target.value || "[default]";
+  const label = target.title || target.value || "Unnamed profile";
   updateStatus(`Loaded profile ${label} via ${labelSource}.`, false);
   expectedRestartUntil = Date.now() + PROFILE_RESTART_GRACE_MS;
   recordSourceControlProfileChange(target, desiredStatus);

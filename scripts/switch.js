@@ -33,7 +33,8 @@ function parseArgs(argv) {
 
 function normalizeProfileValue(value) {
   if (value === null || value === undefined) return null;
-  return String(value).trim();
+  const trimmed = String(value).trim();
+  return trimmed.length ? trimmed : null;
 }
 
 async function main() {
@@ -55,13 +56,22 @@ async function main() {
   });
 
   const profiles = await client.fetchProfiles();
+  const usableProfiles = profiles.filter((entry) => {
+    const value = normalizeProfileValue(entry.value);
+    if (!value) return false;
+    return value.toLowerCase() !== "default";
+  });
 
   if (options.list) {
     console.log("Available profiles:");
-    profiles.forEach((entry) => {
-      const label = entry.title || entry.value || "[default]";
-      const value = entry.value === "" ? "(default)" : entry.value;
-      console.log(`- ${label} ${entry.value === "" ? "" : `(${value})`}`.trim());
+    if (!usableProfiles.length) {
+      console.log("(none)");
+      return;
+    }
+    usableProfiles.forEach((entry) => {
+      const value = normalizeProfileValue(entry.value);
+      const label = entry.title || value || "Unnamed profile";
+      console.log(`- ${label}${value ? ` (${value})` : ""}`);
     });
     return;
   }
@@ -70,25 +80,22 @@ async function main() {
 
   let targetProfile = null;
   if (desiredProfile) {
-    targetProfile = profiles.find((entry) => {
-      const valueMatch =
-        entry.value !== undefined &&
-        entry.value !== null &&
-        entry.value.toLowerCase() === desiredProfile.toLowerCase();
-      const titleMatch =
-        entry.title &&
-        entry.title.toLowerCase() === desiredProfile.toLowerCase();
+    targetProfile = usableProfiles.find((entry) => {
+      const value = normalizeProfileValue(entry.value);
+      const title = entry.title ? entry.title.trim().toLowerCase() : null;
+      const lowered = desiredProfile.toLowerCase();
+      const valueMatch = value && value.toLowerCase() === lowered;
+      const titleMatch = title && title === lowered;
       return valueMatch || titleMatch;
     });
   }
 
   if (!targetProfile) {
-    // Default to SDA if available, otherwise use first option.
-    const sda = profiles.find(
-      (entry) =>
-        entry.value && entry.value.toLowerCase() === "sda"
-    );
-    targetProfile = sda || profiles[0];
+    const sda = usableProfiles.find((entry) => {
+      const value = normalizeProfileValue(entry.value);
+      return value && value.toLowerCase() === "sda";
+    });
+    targetProfile = sda || usableProfiles[0];
   }
 
   if (!targetProfile) {
@@ -97,7 +104,7 @@ async function main() {
 
   await client.loadProfile(targetProfile.value);
 
-  const label = targetProfile.title || targetProfile.value || "[default]";
+  const label = targetProfile.title || targetProfile.value || "Unnamed profile";
   console.log(`Profile "${label}" loaded.`);
 }
 
