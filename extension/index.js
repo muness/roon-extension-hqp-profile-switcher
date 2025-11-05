@@ -45,6 +45,26 @@ function logSourceControl(message, ...args) {
   console.log(`[${timestamp()}][HQP][SC] ${message}`, ...args);
 }
 
+function isTransientProfileLoadError(error) {
+  if (!error) return false;
+  const codeRaw = error.code !== undefined ? String(error.code) : "";
+  const code = codeRaw.toUpperCase();
+  if (code === "ECONNRESET" || code === "ECONNABORTED" || code === "EHTTP401" || code === "401") {
+    return true;
+  }
+  if (/\b401\b/.test(code)) {
+    return true;
+  }
+  const message = typeof error.message === "string" ? error.message : "";
+  if (/\(401\)/.test(message)) {
+    return true;
+  }
+  if (message.toLowerCase().includes("authentication failed")) {
+    return true;
+  }
+  return false;
+}
+
 const roon = new RoonApi({
   extension_id: "muness.hqp.profile.switcher",
   display_name: "HQP Profile Switcher",
@@ -875,7 +895,7 @@ async function loadProfileByValue(profileInput, originLabel, options = {}) {
     await client.loadProfile(target.value);
   } catch (error) {
     loadError = error;
-    if (!error || (error.code !== "ECONNRESET" && error.code !== "ECONNABORTED")) {
+    if (!isTransientProfileLoadError(error)) {
       throw error;
     }
     logSourceControl(
