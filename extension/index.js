@@ -32,6 +32,10 @@ let core = null;
 let svc_source_control = null;
 const sourceControlDevices = new Map();
 let currentProfileValue = stringValue(config.profile);
+let transport = null;
+let lastPlaybackChangeAt = 0;
+const PLAYBACK_GUARD_MS = 3000;
+const DEFAULT_PROFILE_KEY = "__default__";
 
 function timestamp() {
   return new Date().toISOString();
@@ -41,10 +45,30 @@ function logSourceControl(message, ...args) {
   console.log(`[${timestamp()}][HQP][SC] ${message}`, ...args);
 }
 
+function isTransientProfileLoadError(error) {
+  if (!error) return false;
+  const codeRaw = error.code !== undefined ? String(error.code) : "";
+  const code = codeRaw.toUpperCase();
+  if (code === "ECONNRESET" || code === "ECONNABORTED" || code === "EHTTP401" || code === "401") {
+    return true;
+  }
+  if (/\b401\b/.test(code)) {
+    return true;
+  }
+  const message = typeof error.message === "string" ? error.message : "";
+  if (/\(401\)/.test(message)) {
+    return true;
+  }
+  if (message.toLowerCase().includes("authentication failed")) {
+    return true;
+  }
+  return false;
+}
+
 const roon = new RoonApi({
   extension_id: "muness.hqp.profile.switcher",
   display_name: "HQP Profile Switcher",
-  display_version: "1.1.0",
+  display_version: "1.1.1",
   publisher: "Unofficial HQPlayer Tools",
   email: "support@example.com",
   website: "https://github.com/muness/roon-extension-hqp-profile-switcher",
@@ -504,13 +528,17 @@ function profileValueRaw(profile) {
 
 function profileValueKeyFromValue(value) {
   const normalized = stringValue(value);
-  if (!normalized) return "__default__";
+  if (!normalized) return DEFAULT_PROFILE_KEY;
   return normalized.toLowerCase();
 }
 
 function profileValueKey(profile) {
-  if (!profile) return "__default__";
+  if (!profile) return DEFAULT_PROFILE_KEY;
   return profileValueKeyFromValue(profile.value);
+}
+
+function profileKeysMatch(a, b) {
+  return profileValueKeyFromValue(a) === profileValueKeyFromValue(b);
 }
 
 function profileHasValue(profile) {
@@ -613,7 +641,7 @@ function determineControlStatus(value) {
   if (!hasRequiredCredentials(config)) {
     return "indeterminate";
   }
-  return value === currentProfileValue ? "selected" : "deselected";
+  return profileKeysMatch(value, currentProfileValue) ? "selected" : "deselected";
 }
 
 function listProfilesForControls() {
@@ -638,11 +666,34 @@ async function processProfileSelection(req, profileValue) {
 
   const value = stringValue(profileValue);
   const profile = lookupProfileForValue(value);
+  if (profileKeysMatch(value, currentProfileValue)) {
+    const label = profileDisplayTitle(profile);
+    logSourceControl(
+      "Convenience switch ignored (already selected) value=%s label=%s",
+      value || "<none>",
+      label
+    );
+    req.send_complete("Success");
+    return;
+  }
   if (!profileHasValue(profile)) {
     logSourceControl("Rejected convenience switch for missing profile identifier (value=%s)", value || "<none>");
     req.send_complete("Failed", { error: "Profile identifier is required." });
     return;
   }
+
+  if (Date.now() - lastPlaybackChangeAt < PLAYBACK_GUARD_MS) {
+    logSourceControl("Convenience switch suppressed during playback transition (value=%s)", value || "<none>");
+    req.send_complete("Success");
+    return;
+  }
+
+  if (isRestartGraceActive()) {
+    logSourceControl("HQP restart grace active; skipping profile load (value=%s)", value || "<none>");
+    req.send_complete("Success");
+    return;
+  }
+
   const label = profileDisplayTitle(profile);
   const originLabel = `source control (${label})`;
 
@@ -651,6 +702,7 @@ async function processProfileSelection(req, profileValue) {
   const previousValue = currentProfileValue;
   currentProfileValue = value;
   updateSourceControlSelections();
+  lastPlaybackChangeAt = Date.now();
 
   try {
     await loadProfileByValue(value, originLabel, {
@@ -731,6 +783,44 @@ function recordSourceControlProfileChange(profile, status, options = {}) {
 
 function handleCoreFound(foundCore) {
   core = foundCore;
+  transport = core && core.services ? core.services.RoonApiTransport : null;
+  if (transport && typeof transport.subscribe_zones === "function") {
+    transport.subscribe_zones((cmd, data) => {
+      if (!data) {
+        return;
+      }
+
+      const snapshots = [];
+      const groups = ["zones", "zones_added", "zones_changed"];
+      for (const group of groups) {
+        if (Array.isArray(data[group])) {
+          snapshots.push(...data[group]);
+        }
+      }
+
+      const now = Date.now();
+      let updated = false;
+      for (const snapshot of snapshots) {
+        if (!snapshot) continue;
+        const state = snapshot.state || (snapshot.zone && snapshot.zone.state);
+        if (!state) continue;
+        if (state === "playing" || state === "paused" || state === "stopped" || state === "loading") {
+          lastPlaybackChangeAt = now;
+          updated = true;
+          break;
+        }
+      }
+
+      if (!updated && Array.isArray(data.zones_seek_changed) && data.zones_seek_changed.length > 0) {
+        lastPlaybackChangeAt = now;
+        updated = true;
+      }
+
+      if (!updated && (cmd === "Changed" || cmd === "SeekChanged")) {
+        lastPlaybackChangeAt = now;
+      }
+    });
+  }
   logSourceControl("Core found: %s", core && core.core_id);
   initializeSourceControl();
 }
@@ -741,6 +831,8 @@ function handleCoreLost(lostCore) {
   }
   logSourceControl("Core lost");
   core = null;
+  transport = null;
+  lastPlaybackChangeAt = 0;
   clearSourceControlDevices();
 }
 
@@ -798,14 +890,29 @@ async function loadProfileByValue(profileInput, originLabel, options = {}) {
     username: config.username,
     password: config.password,
   });
-
-  await client.loadProfile(target.value);
-
+  let loadError = null;
+  try {
+    await client.loadProfile(target.value);
+  } catch (error) {
+    loadError = error;
+    if (!isTransientProfileLoadError(error)) {
+      throw error;
+    }
+    logSourceControl(
+      "Treating HQP profile load error as transient restart (value=%s code=%s message=%s)",
+      target.value || "<none>",
+      error.code || "<none>",
+      (error && error.message) || "<none>"
+    );
+  }
   const label = target.title || target.value || "Unnamed profile";
   updateStatus(`Loaded profile ${label} via ${labelSource}.`, false);
   expectedRestartUntil = Date.now() + PROFILE_RESTART_GRACE_MS;
   recordSourceControlProfileChange(target, desiredStatus);
 
+  if (loadError) {
+    return target;
+  }
   return target;
 }
 
