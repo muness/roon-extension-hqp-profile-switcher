@@ -17,6 +17,7 @@
   "dependencies": {
     "node-roon-api": "github:roonlabs/node-roon-api",
     "node-roon-api-settings": "github:roonlabs/node-roon-api-settings",
+    "node-roon-api-source-control": "github:RoonLabs/node-roon-api-source-control",
     "node-roon-api-status": "github:roonlabs/node-roon-api-status"
   }
 }

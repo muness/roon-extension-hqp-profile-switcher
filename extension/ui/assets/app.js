@@ -56,6 +56,9 @@
     const portCell = cfg.port ? escapeHtml(String(cfg.port)) : "--";
     const userCell = cfg.username ? escapeHtml(String(cfg.username)) : "<em>not set</em>";
     const profileCell = cfg.profile ? escapeHtml(String(cfg.profile)) : "[default]";
+    const sourceNameCell = cfg.source_control_name
+      ? escapeHtml(String(cfg.source_control_name))
+      : escapeHtml("Profile");
 
     connectionBox.innerHTML =
       '<div><strong>HQPlayer Host:</strong> ' +
@@ -69,6 +72,9 @@
       "</div>" +
       '<div><strong>Selected Profile:</strong> ' +
       profileCell +
+      "</div>" +
+      '<div><strong>Source Control Name:</strong> ' +
+      sourceNameCell +
       "</div>";
   }
 
