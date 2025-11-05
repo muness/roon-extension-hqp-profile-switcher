@@ -630,30 +630,18 @@ function updateSourceControlSelections() {
   }
 }
 
-async function processProfileSelection(req, profileValue, options = {}) {
+async function processProfileSelection(req, profileValue) {
   if (!hasRequiredCredentials(config)) {
     req.send_complete("Failed", { error: MISSING_CREDENTIALS_MESSAGE });
     return;
   }
 
-  const requestType = options.requestType || "convenience";
-  const requestedStatus = options.requestedStatus || "selected";
-
   const value = stringValue(profileValue);
   const profile = lookupProfileForValue(value);
   const label = profileDisplayTitle(profile);
-  const originLabel =
-    requestType === "standby"
-      ? `source control standby (${label})`
-      : `source control (${label})`;
+  const originLabel = `source control (${label})`;
 
-  logSourceControl(
-    "%s requested for value=%s label=%s status=%s",
-    requestType === "standby" ? "Standby select" : "Convenience switch",
-    value || "[default]",
-    label,
-    requestedStatus
-  );
+  logSourceControl("Convenience switch requested for value=%s label=%s", value || "[default]", label);
 
   const previousValue = currentProfileValue;
   currentProfileValue = value;
@@ -661,7 +649,7 @@ async function processProfileSelection(req, profileValue, options = {}) {
 
   try {
     await loadProfileByValue(value, originLabel, {
-      sourceStatus: requestedStatus,
+      sourceStatus: "selected",
     });
     req.send_complete("Success");
   } catch (error) {
@@ -669,8 +657,7 @@ async function processProfileSelection(req, profileValue, options = {}) {
     updateSourceControlSelections();
     const message = friendlyErrorMessage(error, (error && error.candidate) || config);
     logSourceControl(
-      "%s failed for value=%s label=%s error=%s",
-      requestType === "standby" ? "Standby select" : "Convenience switch",
+      "Convenience switch failed for value=%s label=%s error=%s",
       value || "[default]",
       label,
       message
@@ -680,44 +667,23 @@ async function processProfileSelection(req, profileValue, options = {}) {
 }
 
 async function handleProfileConvenienceSwitch(req, profileValue) {
-  await processProfileSelection(req, profileValue, {
-    requestType: "convenience",
-    requestedStatus: "selected",
-  });
+  await processProfileSelection(req, profileValue);
 }
 
 function handleProfileStandby(req, profileValue) {
-  const value = stringValue(profileValue);
   const requestedStatus = resolveRequestedStatus(req, "selected");
-  logSourceControl(
-    "Standby requested for value=%s requested_status=%s",
-    value || "[default]",
-    requestedStatus
-  );
+  const value = stringValue(profileValue);
+  logSourceControl("Standby requested for value=%s status=%s", value || "[default]", requestedStatus);
 
   if (requestedStatus === "selected") {
-    return processProfileSelection(req, profileValue, {
-      requestType: "standby",
-      requestedStatus: "selected",
-    });
-  }
-
-  const wasActiveValue = currentProfileValue;
-  const wasActiveMatch =
-    profileValueKeyFromValue(wasActiveValue) === profileValueKeyFromValue(value);
-  if (wasActiveMatch) {
-    currentProfileValue = null;
+    processProfileSelection(req, profileValue);
+    return;
   }
 
   const key = profileValueKeyFromValue(value);
-  const nextStatus = requestedStatus === "indeterminate" ? "indeterminate" : "deselected";
-  const updated = updateDeviceStateByKey(key, { status: nextStatus }, { value });
+  const updated = updateDeviceStateByKey(key, { status: requestedStatus }, { value });
   if (updated) {
-    logSourceControl("Standby -> key=%s status=%s", updated.control_key, updated.status);
-  }
-
-  if (wasActiveMatch) {
-    updateSourceControlSelections();
+    logSourceControl("Standby update -> key=%s status=%s", updated.control_key, updated.status);
   }
 
   req.send_complete("Success");
