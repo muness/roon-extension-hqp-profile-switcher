@@ -9,3 +9,6 @@ config.json
 extension/data/settings.json
 .reg/bin
 .reg/etc
+
+# Superego
+.superego/
