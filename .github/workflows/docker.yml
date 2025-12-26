@@ -1,4 +1,4 @@
-name: Docker Build & Push
+name: Docker Build & Release
 
 on:
   push:
@@ -53,9 +53,76 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  release:
+    needs: build-and-push
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get version from tag
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Generate release notes
+        run: |
+          cat << EOF > release_notes.md
+          ## Docker
+
+          Pull from Docker Hub:
+          \`\`\`bash
+          docker pull muness/roon-extension-hqp-profile-switcher:${{ steps.version.outputs.version }}
+          # or
+          docker pull muness/roon-extension-hqp-profile-switcher:latest
+          \`\`\`
+
+          ### Docker Compose
+
+          \`\`\`yaml
+          services:
+            hqp-profile-switcher:
+              image: docker.io/muness/roon-extension-hqp-profile-switcher:latest
+              container_name: hqp-profile-switcher
+              restart: unless-stopped
+              environment:
+                - TZ=UTC
+                - ROON_EXTENSION_PORT=9330
+                - HQP_UI_PORT=9331
+                - HQP_RESTART_GRACE_MS=10000
+              ports:
+                - "9330:9330/tcp"   # Roon extension
+                - "9330:9330/udp"   # Roon discovery
+                - "9331:9331/tcp"   # Web UI
+              volumes:
+                - hqp-profile-switcher-data:/home/node/app/data
+
+          volumes:
+            hqp-profile-switcher-data:
+          \`\`\`
+
+          ## Links
+
+          - [Docker Hub](https://hub.docker.com/r/muness/roon-extension-hqp-profile-switcher)
+          - [Documentation](https://github.com/muness/roon-extension-hqp-profile-switcher#readme)
+          EOF
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: v${{ steps.version.outputs.version }}
+          body_path: release_notes.md
+          generate_release_notes: true
+          append_body: false
