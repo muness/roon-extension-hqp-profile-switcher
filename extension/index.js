@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 const fs = require("fs");
+const os = require("os");
 const path = require("path");
 const RoonApi = require("node-roon-api");
 const RoonApiSettings = require("node-roon-api-settings");
@@ -23,6 +24,22 @@ const UI_PORT = Number(
   process.env.HQP_UI_PORT || (EXTENSION_PORT === 9330 ? 9331 : EXTENSION_PORT + 1)
 );
 const PROFILE_RESTART_GRACE_MS = Number(process.env.HQP_RESTART_GRACE_MS || 10000);
+
+function getLocalIp() {
+  const interfaces = os.networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name]) {
+      if (iface.family === "IPv4" && !iface.internal) {
+        return iface.address;
+      }
+    }
+  }
+  return "localhost";
+}
+
+function getWebUiUrl() {
+  return `http://${getLocalIp()}:${UI_PORT}/ui`;
+}
 
 let config = loadConfig();
 let availableProfiles = [];
@@ -109,10 +126,10 @@ const svc_settings = new RoonApiSettings(roon, {
       config = candidate;
       saveConfig(config);
 
-      const message = selectedProfile
-        ? `Loaded profile ${selectedProfile.title || selectedProfile.value || "[default]"}`
-        : "Connected to HQPlayer. Profiles refreshed.";
-      updateStatus(message, false);
+      const profileLabel = selectedProfile
+        ? `Loaded ${selectedProfile.title || selectedProfile.value || "[default]"}`
+        : "Ready";
+      updateStatus(`${profileLabel} • ${getWebUiUrl()}`, false);
       req.send_complete("Success", { settings: buildSettingsState() });
       svc_settings.update_settings(buildSettingsState());
     } catch (error) {
@@ -142,7 +159,7 @@ async function startup() {
     const { candidate } = await testConnection(config, { loadProfile: false });
     config = candidate;
     saveConfig(config);
-    updateStatus("Ready.", false);
+    updateStatus(`Ready • ${getWebUiUrl()}`, false);
   } catch (error) {
     const message = friendlyErrorMessage(error, (error && error.candidate) || config);
     const isMissing = message === MISSING_CREDENTIALS_MESSAGE;
@@ -391,7 +408,7 @@ async function loadProfileByValue(profileInput, originLabel) {
   await client.loadProfile(target.value);
 
   const label = target.title || target.value || "[default]";
-  updateStatus(`Loaded profile ${label} via ${labelSource}.`, false);
+  updateStatus(`Loaded ${label} • ${getWebUiUrl()}`, false);
   expectedRestartUntil = Date.now() + PROFILE_RESTART_GRACE_MS;
 
   return target;
