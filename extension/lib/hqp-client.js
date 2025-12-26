@@ -387,6 +387,23 @@ class HQPClient {
     };
   }
 
+  async setPipelineSetting(name, value) {
+    // POST to root page to change a setting
+    const payload = new URLSearchParams({ [name]: value }).toString();
+    const response = await this.makeRequest("/", {
+      method: "POST",
+      headers: {
+        ...this.baseHeaders(),
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: payload,
+    });
+    if (response.statusCode >= 400) {
+      throw new Error(`Failed to set ${name} (${response.statusCode}).`);
+    }
+    return true;
+  }
+
   async loadProfile(profileValue) {
     if (profileValue === undefined || profileValue === null) {
       throw new Error("Profile value is required");

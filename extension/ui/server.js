@@ -64,6 +64,10 @@ function startUiServer(options) {
         return handlePipeline(res, fetchPipeline, formatError);
       }
 
+      if (req.method === "POST" && pathname === "/api/pipeline") {
+        return handlePipelineSet(req, res, options);
+      }
+
       if (req.method === "GET" && pathname === "/favicon.ico") {
         res.writeHead(204).end();
         return;
@@ -235,6 +239,37 @@ async function handlePipeline(res, fetchPipeline, formatError) {
   try {
     const pipeline = await fetchPipeline();
     sendJson(res, 200, pipeline);
+  } catch (error) {
+    const message = formatError ? formatError(error) : error.message;
+    sendJson(res, 502, { error: message });
+  }
+}
+
+async function handlePipelineSet(req, res, options) {
+  const { setPipelineSetting, formatError } = options;
+
+  if (!setPipelineSetting) {
+    sendJson(res, 501, { error: "Pipeline settings not available" });
+    return;
+  }
+
+  let body;
+  try {
+    body = await readJsonBody(req);
+  } catch (error) {
+    sendJson(res, 400, { error: "Invalid JSON payload" });
+    return;
+  }
+
+  const { name, value } = body;
+  if (!name || value === undefined) {
+    sendJson(res, 400, { error: "name and value required" });
+    return;
+  }
+
+  try {
+    await setPipelineSetting(name, value);
+    sendJson(res, 200, { ok: true, name, value });
   } catch (error) {
     const message = formatError ? formatError(error) : error.message;
     sendJson(res, 502, { error: message });

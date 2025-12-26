@@ -19,6 +19,9 @@
   let statusState = null;
   let statusConnection = null;
 
+  // Track if we're currently changing a setting (to avoid refresh conflicts)
+  let pendingChange = false;
+
   function escapeHtml(value) {
     return String(value)
       .replace(/&/g, "&amp;")
@@ -50,6 +53,23 @@
     return response.json();
   }
 
+  function populateSelect(select, options, selectedValue) {
+    if (!select || !options) return;
+
+    const currentValue = select.value;
+    select.innerHTML = options
+      .map(opt => {
+        const selected = opt.value === selectedValue ? " selected" : "";
+        return `<option value="${escapeHtml(opt.value)}"${selected}>${escapeHtml(opt.label)}</option>`;
+      })
+      .join("");
+
+    // Preserve selection if it was just changed
+    if (pendingChange && currentValue) {
+      select.value = currentValue;
+    }
+  }
+
   function renderPipeline(data) {
     if (!pipelineContent) return;
 
@@ -59,33 +79,28 @@
     const settings = data.settings || {};
     const status = data.status || {};
 
-    // Mode
-    if (pipeMode) {
-      pipeMode.textContent = settings.mode?.selected?.label || status.activeMode || "-";
+    // Populate dropdowns with options and selected values
+    if (pipeMode && settings.mode) {
+      populateSelect(pipeMode, settings.mode.options, settings.mode.selected?.value);
     }
 
-    // Rate/Samplerate
-    if (pipeRate) {
-      const rate = settings.samplerate?.selected?.label || "Auto";
-      pipeRate.textContent = rate === "0" ? "Auto" : rate;
+    if (pipeRate && settings.samplerate) {
+      populateSelect(pipeRate, settings.samplerate.options, settings.samplerate.selected?.value);
     }
 
-    // Filter 1x
-    if (pipeFilter1x) {
-      pipeFilter1x.textContent = settings.filter1x?.selected?.label || status.activeFilter || "-";
+    if (pipeFilter1x && settings.filter1x) {
+      populateSelect(pipeFilter1x, settings.filter1x.options, settings.filter1x.selected?.value);
     }
 
-    // Filter Nx
-    if (pipeFilterNx) {
-      pipeFilterNx.textContent = settings.filterNx?.selected?.label || "-";
+    if (pipeFilterNx && settings.filterNx) {
+      populateSelect(pipeFilterNx, settings.filterNx.options, settings.filterNx.selected?.value);
     }
 
-    // Shaper/Dither
-    if (pipeShaper) {
-      pipeShaper.textContent = settings.shaper?.selected?.label || status.activeShaper || "-";
+    if (pipeShaper && settings.shaper) {
+      populateSelect(pipeShaper, settings.shaper.options, settings.shaper.selected?.value);
     }
 
-    // Output from status table
+    // Output (read-only)
     if (pipeOutput) {
       pipeOutput.textContent = status.output || "-";
     }
@@ -163,6 +178,7 @@
   }
 
   async function refreshPipeline() {
+    if (pendingChange) return; // Don't refresh while changing
     try {
       const data = await fetchJson("/api/pipeline");
       renderPipeline(data);
@@ -200,6 +216,36 @@
       }
     } catch (error) {
       banner(error.message || "Unable to load status.", true);
+    }
+  }
+
+  async function handlePipelineChange(event) {
+    const select = event.target;
+    const settingName = select.dataset.setting;
+    const value = select.value;
+
+    if (!settingName) return;
+
+    pendingChange = true;
+    select.disabled = true;
+
+    try {
+      await fetchJson("/api/pipeline", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: settingName, value }),
+      });
+      // Brief delay then refresh to get new state
+      setTimeout(() => {
+        pendingChange = false;
+        select.disabled = false;
+        refreshPipeline();
+      }, 500);
+    } catch (error) {
+      banner(error.message, true);
+      pendingChange = false;
+      select.disabled = false;
+      refreshPipeline();
     }
   }
 
@@ -252,8 +298,14 @@
       profileForm.addEventListener("submit", handleSubmit);
     }
 
+    // Add change handlers to pipeline selects
+    const pipeSelects = document.querySelectorAll(".pipe-select");
+    pipeSelects.forEach(select => {
+      select.addEventListener("change", handlePipelineChange);
+    });
+
     refreshAll();
-    setInterval(refreshAll, 5000); // Faster refresh for pipeline
+    setInterval(refreshAll, 5000);
   }
 
   window.addEventListener("DOMContentLoaded", init);
