@@ -7,7 +7,6 @@ A Roon extension for managing HQPlayer Embedded profiles and audio pipeline sett
 - **Profile Switching**: Switch HQPlayer profiles from Roon's Settings UI or the built-in Web UI
 - **Audio Pipeline Controls**: Adjust Mode, Sample Rate, Filters, and Dither directly from the Web UI
 - **Mobile-Friendly**: Responsive Web UI designed for phones and tablets
-- **Source Controls**: Trigger profile switches from Roon's playback interface
 
 ## Installation
 
