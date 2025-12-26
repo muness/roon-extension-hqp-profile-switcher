@@ -18,6 +18,8 @@
   let volumeSection = null;
   let statusState = null;
   let statusConnection = null;
+  let statusHqpTitle = null;
+  let statusRequestedProfile = null;
 
   // Track if we're currently changing a setting (to avoid refresh conflicts)
   let pendingChange = false;
@@ -137,13 +139,21 @@
       statusConnection.classList.toggle("error", !!data.status?.isError);
     }
 
+    // Show active HQPlayer config title
+    if (statusHqpTitle) {
+      statusHqpTitle.textContent = data.hqp_title || "-";
+    }
+
+    // Show last requested profile from extension
+    if (statusRequestedProfile) {
+      statusRequestedProfile.textContent = cfg.profile || "-";
+    }
+
     const hostCell = cfg.host ? escapeHtml(cfg.host) : "not set";
     const portCell = cfg.port || "--";
-    const profileCell = cfg.profile || "not selected";
 
     connectionBox.innerHTML =
-      "<div><strong>Host:</strong> " + hostCell + ":" + portCell + "</div>" +
-      "<div><strong>Profile:</strong> " + escapeHtml(profileCell) + "</div>";
+      "<div><strong>Host:</strong> " + hostCell + ":" + portCell + "</div>";
   }
 
   function renderProfiles(items) {
@@ -293,6 +303,8 @@
     volumeSection = document.getElementById("volume-section");
     statusState = document.getElementById("status-state");
     statusConnection = document.getElementById("status-connection");
+    statusHqpTitle = document.getElementById("status-hqp-title");
+    statusRequestedProfile = document.getElementById("status-requested-profile");
 
     if (profileForm) {
       profileForm.addEventListener("submit", handleSubmit);

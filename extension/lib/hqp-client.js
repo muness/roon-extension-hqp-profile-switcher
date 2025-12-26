@@ -358,6 +358,21 @@ class HQPClient {
     return { value, min, max, isFixed };
   }
 
+  async fetchConfigTitle() {
+    // /config requires auth
+    const response = await this.request("/config");
+    if (response.statusCode >= 400) {
+      throw new Error(`Failed to load HQPlayer config page (${response.statusCode}).`);
+    }
+
+    // Parse: <input type="text" name="title" value="iFi Zen" required/>
+    const titleMatch = response.body.match(/<input[^>]*name\s*=\s*["']title["'][^>]*>/i);
+    if (!titleMatch) return null;
+
+    const value = this.getAttribute(titleMatch[0], "value");
+    return value || null;
+  }
+
   async fetchPipeline() {
     // Root page doesn't require auth
     const response = await this.makeRequest("/", { method: "GET", headers: this.baseHeaders() });

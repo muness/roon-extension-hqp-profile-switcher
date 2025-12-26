@@ -22,6 +22,7 @@ function startUiServer(options) {
     missingCredentialsMessage,
     isExpectingRestart = () => false,
     fetchPipeline = null,
+    fetchConfigTitle = null,
   } = options;
 
   const credentialsMessage =
@@ -42,7 +43,7 @@ function startUiServer(options) {
       }
 
       if (req.method === "GET" && pathname === "/api/status") {
-        return handleStatus(res, getStatus, getConfig, listProfiles, uiPort, roonPort);
+        return handleStatus(res, getStatus, getConfig, listProfiles, uiPort, roonPort, fetchConfigTitle);
       }
 
       if (req.method === "GET" && pathname === "/api/profiles") {
@@ -138,14 +139,26 @@ async function readJsonBody(req) {
   return JSON.parse(text);
 }
 
-function handleStatus(res, getStatus, getConfig, listProfiles, uiPort, roonPort) {
+async function handleStatus(res, getStatus, getConfig, listProfiles, uiPort, roonPort, fetchConfigTitle) {
   const status = getStatus ? getStatus() : { message: "Unknown", isError: false };
   const config = getConfig ? getConfig() : {};
   const profiles = listProfiles ? listProfiles() : [];
+
+  // Fetch actual config title from HQPlayer (if available)
+  let hqpTitle = null;
+  if (fetchConfigTitle) {
+    try {
+      hqpTitle = await fetchConfigTitle();
+    } catch (error) {
+      // Ignore errors - title is optional
+    }
+  }
+
   sendJson(res, 200, {
     status,
     config,
     profiles,
+    hqp_title: hqpTitle,
     ui_port: uiPort,
     roon_port: roonPort,
   });
