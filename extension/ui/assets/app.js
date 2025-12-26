@@ -1,4 +1,45 @@
 (function () {
+  const THEME_STORAGE_KEY = 'hqp-ui-theme';
+
+  // Theme handling - run immediately to prevent flash
+  function initTheme() {
+    const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+    if (savedTheme) {
+      document.documentElement.setAttribute('data-theme', savedTheme);
+    }
+  }
+
+  function updateThemeIcon(theme) {
+    const sunIcon = document.getElementById('theme-icon-sun');
+    const moonIcon = document.getElementById('theme-icon-moon');
+    if (!sunIcon || !moonIcon) return;
+
+    if (theme === 'light') {
+      sunIcon.classList.add('hidden');
+      moonIcon.classList.remove('hidden');
+    } else {
+      sunIcon.classList.remove('hidden');
+      moonIcon.classList.add('hidden');
+    }
+  }
+
+  function toggleTheme() {
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+
+    if (newTheme === 'dark') {
+      document.documentElement.removeAttribute('data-theme');
+    } else {
+      document.documentElement.setAttribute('data-theme', newTheme);
+    }
+
+    localStorage.setItem(THEME_STORAGE_KEY, newTheme);
+    updateThemeIcon(newTheme);
+  }
+
+  // Initialize theme immediately
+  initTheme();
+
   let profileSelect = null;
   let profileForm = null;
   let connectionBox = null;
@@ -315,6 +356,15 @@
     pipeSelects.forEach(select => {
       select.addEventListener("change", handlePipelineChange);
     });
+
+    // Theme toggle
+    const themeToggle = document.getElementById('theme-toggle');
+    if (themeToggle) {
+      themeToggle.addEventListener('click', toggleTheme);
+    }
+    // Update icon to match current theme
+    const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+    updateThemeIcon(currentTheme);
 
     refreshAll();
     setInterval(refreshAll, 5000);
