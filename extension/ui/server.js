@@ -150,7 +150,8 @@ async function handleStatus(res, getStatus, getConfig, listProfiles, uiPort, roo
     try {
       hqpTitle = await fetchConfigTitle();
     } catch (error) {
-      // Ignore errors - title is optional
+      // Title is optional - log for debugging but don't fail
+      console.debug("[HQP] Failed to fetch config title:", error.message);
     }
   }
 
