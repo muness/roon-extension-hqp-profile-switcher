@@ -476,4 +476,28 @@ startUiServer({
     });
     return client.fetchPipeline();
   },
+  setPipelineSetting: async (name, value) => {
+    if (!hasRequiredCredentials(config)) {
+      throw new Error(MISSING_CREDENTIALS_MESSAGE);
+    }
+    const client = new HQPClient({
+      host: config.host,
+      port: config.port,
+      username: config.username,
+      password: config.password,
+    });
+    return client.setPipelineSetting(name, value);
+  },
+  fetchConfigTitle: async () => {
+    if (!hasRequiredCredentials(config)) {
+      return null;
+    }
+    const client = new HQPClient({
+      host: config.host,
+      port: config.port,
+      username: config.username,
+      password: config.password,
+    });
+    return client.fetchConfigTitle();
+  },
 });

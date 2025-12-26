@@ -358,6 +358,21 @@ class HQPClient {
     return { value, min, max, isFixed };
   }
 
+  async fetchConfigTitle() {
+    // /config requires auth
+    const response = await this.request("/config");
+    if (response.statusCode >= 400) {
+      throw new Error(`Failed to load HQPlayer config page (${response.statusCode}).`);
+    }
+
+    // Parse: <input type="text" name="title" value="iFi Zen" required/>
+    const titleMatch = response.body.match(/<input[^>]*name\s*=\s*["']title["'][^>]*>/i);
+    if (!titleMatch) return null;
+
+    const value = this.getAttribute(titleMatch[0], "value");
+    return value || null;
+  }
+
   async fetchPipeline() {
     // Root page doesn't require auth
     const response = await this.makeRequest("/", { method: "GET", headers: this.baseHeaders() });
@@ -385,6 +400,38 @@ class HQPClient {
         samplerate,
       },
     };
+  }
+
+  async setPipelineSetting(name, value) {
+    // HQPlayer requires ALL form fields to be submitted together
+    // First fetch current values, then update the one being changed
+    const pipeline = await this.fetchPipeline();
+    const settings = pipeline.settings || {};
+
+    // Build payload with all current selected values
+    const formData = {
+      mode: settings.mode?.selected?.value || "0",
+      samplerate: settings.samplerate?.selected?.value || "0",
+      filter1x: settings.filter1x?.selected?.value || "0",
+      filterNx: settings.filterNx?.selected?.value || "0",
+      shaper: settings.shaper?.selected?.value || "0",
+    };
+
+    // Update the setting being changed
+    formData[name] = value;
+
+    const payload = new URLSearchParams(formData).toString();
+    const response = await this.request("/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: payload,
+    });
+    if (response.statusCode >= 400) {
+      throw new Error(`Failed to set ${name} (${response.statusCode}).`);
+    }
+    return true;
   }
 
   async loadProfile(profileValue) {

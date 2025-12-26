@@ -22,6 +22,7 @@ function startUiServer(options) {
     missingCredentialsMessage,
     isExpectingRestart = () => false,
     fetchPipeline = null,
+    fetchConfigTitle = null,
   } = options;
 
   const credentialsMessage =
@@ -42,7 +43,7 @@ function startUiServer(options) {
       }
 
       if (req.method === "GET" && pathname === "/api/status") {
-        return handleStatus(res, getStatus, getConfig, listProfiles, uiPort, roonPort);
+        return handleStatus(res, getStatus, getConfig, listProfiles, uiPort, roonPort, fetchConfigTitle);
       }
 
       if (req.method === "GET" && pathname === "/api/profiles") {
@@ -62,6 +63,10 @@ function startUiServer(options) {
 
       if (req.method === "GET" && pathname === "/api/pipeline") {
         return handlePipeline(res, fetchPipeline, formatError);
+      }
+
+      if (req.method === "POST" && pathname === "/api/pipeline") {
+        return handlePipelineSet(req, res, options);
       }
 
       if (req.method === "GET" && pathname === "/favicon.ico") {
@@ -134,14 +139,27 @@ async function readJsonBody(req) {
   return JSON.parse(text);
 }
 
-function handleStatus(res, getStatus, getConfig, listProfiles, uiPort, roonPort) {
+async function handleStatus(res, getStatus, getConfig, listProfiles, uiPort, roonPort, fetchConfigTitle) {
   const status = getStatus ? getStatus() : { message: "Unknown", isError: false };
   const config = getConfig ? getConfig() : {};
   const profiles = listProfiles ? listProfiles() : [];
+
+  // Fetch actual config title from HQPlayer (if available)
+  let hqpTitle = null;
+  if (fetchConfigTitle) {
+    try {
+      hqpTitle = await fetchConfigTitle();
+    } catch (error) {
+      // Title is optional - log for debugging but don't fail
+      console.debug("[HQP] Failed to fetch config title:", error.message);
+    }
+  }
+
   sendJson(res, 200, {
     status,
     config,
     profiles,
+    hqp_title: hqpTitle,
     ui_port: uiPort,
     roon_port: roonPort,
   });
@@ -235,6 +253,37 @@ async function handlePipeline(res, fetchPipeline, formatError) {
   try {
     const pipeline = await fetchPipeline();
     sendJson(res, 200, pipeline);
+  } catch (error) {
+    const message = formatError ? formatError(error) : error.message;
+    sendJson(res, 502, { error: message });
+  }
+}
+
+async function handlePipelineSet(req, res, options) {
+  const { setPipelineSetting, formatError } = options;
+
+  if (!setPipelineSetting) {
+    sendJson(res, 501, { error: "Pipeline settings not available" });
+    return;
+  }
+
+  let body;
+  try {
+    body = await readJsonBody(req);
+  } catch (error) {
+    sendJson(res, 400, { error: "Invalid JSON payload" });
+    return;
+  }
+
+  const { name, value } = body;
+  if (!name || value === undefined) {
+    sendJson(res, 400, { error: "name and value required" });
+    return;
+  }
+
+  try {
+    await setPipelineSetting(name, value);
+    sendJson(res, 200, { ok: true, name, value });
   } catch (error) {
     const message = formatError ? formatError(error) : error.message;
     sendJson(res, 502, { error: message });

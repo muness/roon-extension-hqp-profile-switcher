@@ -98,6 +98,20 @@
         color: var(--accent);
         word-break: break-word;
       }
+      .pipe-select {
+        width: 100%;
+        padding: 0.5rem;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        background: rgba(20, 24, 32, 0.9);
+        color: var(--accent);
+        font-size: 0.9rem;
+        cursor: pointer;
+      }
+      .pipe-select:focus {
+        outline: none;
+        border-color: var(--accent);
+      }
       .volume-bar {
         margin-top: 0.75rem;
         padding-top: 0.75rem;
@@ -211,27 +225,27 @@
           <div id="pipeline-content" class="hidden">
             <div class="pipeline-grid">
               <div class="setting-item">
-                <span class="setting-label">Mode</span>
-                <span class="setting-value" id="pipe-mode">-</span>
+                <label class="setting-label" for="pipe-mode">Mode</label>
+                <select class="pipe-select" id="pipe-mode" data-setting="mode"></select>
               </div>
               <div class="setting-item">
-                <span class="setting-label">Rate</span>
-                <span class="setting-value" id="pipe-rate">-</span>
+                <label class="setting-label" for="pipe-rate">Rate</label>
+                <select class="pipe-select" id="pipe-rate" data-setting="samplerate"></select>
               </div>
               <div class="setting-item">
-                <span class="setting-label">Filter 1x</span>
-                <span class="setting-value" id="pipe-filter1x">-</span>
+                <label class="setting-label" for="pipe-filter1x">Filter 1x</label>
+                <select class="pipe-select" id="pipe-filter1x" data-setting="filter1x"></select>
               </div>
               <div class="setting-item">
-                <span class="setting-label">Filter Nx</span>
-                <span class="setting-value" id="pipe-filterNx">-</span>
+                <label class="setting-label" for="pipe-filterNx">Filter Nx</label>
+                <select class="pipe-select" id="pipe-filterNx" data-setting="filterNx"></select>
               </div>
               <div class="setting-item">
-                <span class="setting-label">Dither</span>
-                <span class="setting-value" id="pipe-shaper">-</span>
+                <label class="setting-label" for="pipe-shaper">Dither</label>
+                <select class="pipe-select" id="pipe-shaper" data-setting="shaper"></select>
               </div>
               <div class="setting-item">
-                <span class="setting-label">Output</span>
+                <label class="setting-label">Output</label>
                 <span class="setting-value" id="pipe-output">-</span>
               </div>
             </div>
@@ -257,6 +271,14 @@
           <div class="status-row">
             <span class="status-label">Connection</span>
             <span class="status-value" id="status-connection">-</span>
+          </div>
+          <div class="status-row">
+            <span class="status-label">Active Config</span>
+            <span class="status-value" id="status-hqp-title">-</span>
+          </div>
+          <div class="status-row">
+            <span class="status-label">Last Requested</span>
+            <span class="status-value" id="status-requested-profile">-</span>
           </div>
         </div>
       </section>
