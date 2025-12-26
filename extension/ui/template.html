@@ -8,9 +8,9 @@
       :root {
         color-scheme: light dark;
         font-family: system-ui, -apple-system, Segoe UI, sans-serif;
-        --accent: #00b4d8;
-        --accent-dark: #0096c7;
-        --accent-dim: rgba(0, 180, 216, 0.35);
+        --accent: #38bdf8;
+        --accent-dark: #0ea5e9;
+        --accent-dim: rgba(56, 189, 248, 0.35);
         /* Dark theme (default) */
         --bg: #101418;
         --bg-card: rgba(12, 18, 24, 0.7);
@@ -32,7 +32,10 @@
         --playing: #4ade80;
       }
       [data-theme="light"] {
-        --bg: #f5f5f5;
+        --accent: #0284c7;
+        --accent-dark: #0369a1;
+        --accent-dim: rgba(2, 132, 199, 0.25);
+        --bg: #fafafa;
         --bg-card: rgba(255, 255, 255, 0.9);
         --bg-input: rgba(255, 255, 255, 0.95);
         --bg-main: rgba(0, 0, 0, 0.03);
@@ -50,6 +53,29 @@
         --shadow: rgba(0, 0, 0, 0.15);
         --volume-bg: rgba(0, 0, 0, 0.1);
         --playing: #16a34a;
+      }
+      [data-theme="oled"] {
+        --accent: #38bdf8;
+        --accent-dark: #0ea5e9;
+        --accent-dim: rgba(56, 189, 248, 0.35);
+        --bg: #000000;
+        --bg-card: rgba(10, 10, 10, 0.9);
+        --bg-input: rgba(15, 15, 15, 0.95);
+        --bg-main: rgba(255, 255, 255, 0.02);
+        --bg-banner: rgba(15, 25, 35, 0.8);
+        --bg-error: rgba(60, 10, 10, 0.7);
+        --text: #f5f5f5;
+        --text-dim: rgba(245, 245, 245, 0.5);
+        --text-dimmer: rgba(245, 245, 245, 0.4);
+        --text-dimmest: rgba(245, 245, 245, 0.35);
+        --border: rgba(255, 255, 255, 0.06);
+        --border-input: rgba(255, 255, 255, 0.12);
+        --border-strong: rgba(255, 255, 255, 0.15);
+        --border-banner: rgba(150, 200, 255, 0.2);
+        --border-error: rgba(255, 80, 80, 0.4);
+        --shadow: rgba(0, 0, 0, 0.6);
+        --volume-bg: rgba(255, 255, 255, 0.08);
+        --playing: #4ade80;
       }
       html {
         background: var(--bg);
@@ -291,11 +317,14 @@
       <div class="header-row">
         <h1>HQPlayer</h1>
         <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
-          <svg id="theme-icon-sun" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg id="theme-icon-sun" class="hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
           </svg>
-          <svg id="theme-icon-moon" class="hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg id="theme-icon-moon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+          </svg>
+          <svg id="theme-icon-oled" class="hidden" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
           </svg>
         </button>
       </div>

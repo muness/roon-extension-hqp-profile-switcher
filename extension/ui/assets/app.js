@@ -12,20 +12,35 @@
   function updateThemeIcon(theme) {
     const sunIcon = document.getElementById('theme-icon-sun');
     const moonIcon = document.getElementById('theme-icon-moon');
-    if (!sunIcon || !moonIcon) return;
+    const oledIcon = document.getElementById('theme-icon-oled');
+    if (!sunIcon || !moonIcon || !oledIcon) return;
 
+    sunIcon.classList.add('hidden');
+    moonIcon.classList.add('hidden');
+    oledIcon.classList.add('hidden');
+
+    // Show icon for current state
     if (theme === 'light') {
-      sunIcon.classList.add('hidden');
-      moonIcon.classList.remove('hidden');
-    } else {
       sunIcon.classList.remove('hidden');
-      moonIcon.classList.add('hidden');
+    } else if (theme === 'oled') {
+      oledIcon.classList.remove('hidden');
+    } else {
+      moonIcon.classList.remove('hidden');
     }
   }
 
   function toggleTheme() {
-    const currentTheme = document.documentElement.getAttribute('data-theme');
-    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+    const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+    let newTheme;
+
+    // Cycle: dark → light → oled → dark
+    if (currentTheme === 'dark') {
+      newTheme = 'light';
+    } else if (currentTheme === 'light') {
+      newTheme = 'oled';
+    } else {
+      newTheme = 'dark';
+    }
 
     if (newTheme === 'dark') {
       document.documentElement.removeAttribute('data-theme');
