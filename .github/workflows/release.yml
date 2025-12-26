@@ -70,4 +70,4 @@ jobs:
           name: v${{ steps.version.outputs.version }}
           body_path: release_notes.md
           generate_release_notes: true
-          append_body: true
+          append_body: false
