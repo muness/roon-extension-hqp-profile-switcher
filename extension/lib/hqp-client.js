@@ -405,10 +405,9 @@ class HQPClient {
   async setPipelineSetting(name, value) {
     // POST to root page to change a setting
     const payload = new URLSearchParams({ [name]: value }).toString();
-    const response = await this.makeRequest("/", {
+    const response = await this.request("/", {
       method: "POST",
       headers: {
-        ...this.baseHeaders(),
         "Content-Type": "application/x-www-form-urlencoded",
       },
       body: payload,
