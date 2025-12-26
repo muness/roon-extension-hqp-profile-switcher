@@ -9,9 +9,9 @@ services:
       - HQP_UI_PORT=9331
       - HQP_RESTART_GRACE_MS=10000
     ports:
-      - "9330:9330/tcp"
-      - "9330:9330/udp"
-      - "9331:9331/tcp"
+      - "9330:9330/tcp"   # Roon extension
+      - "9330:9330/udp"   # Roon discovery
+      - "9331:9331/tcp"   # Web UI
     volumes:
       - hqp-profile-switcher-data:/home/node/app/data
 
