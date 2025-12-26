@@ -290,6 +290,103 @@ class HQPClient {
     return this.sanitizeProfiles(form.profiles);
   }
 
+  parseSelectOptions(html, selectName) {
+    const selectRegex = new RegExp(
+      `<select[^>]*name\\s*=\\s*["']${selectName}["'][^>]*>([\\s\\S]*?)<\\/select>`,
+      "i"
+    );
+    const selectMatch = html.match(selectRegex);
+    if (!selectMatch) return { selected: { value: "", label: "" }, options: [] };
+
+    const content = selectMatch[1];
+    const options = [];
+    let selected = { value: "", label: "" };
+
+    const optionRegex = /<option([^>]*)>([\s\S]*?)<\/option>/gi;
+    let match;
+    while ((match = optionRegex.exec(content)) !== null) {
+      const attrs = match[1];
+      const label = match[2].replace(/\s+/g, " ").trim();
+      const value = this.getAttribute(match[0], "value") || label;
+      const opt = { value, label };
+      options.push(opt);
+      if (/selected/i.test(attrs)) {
+        selected = opt;
+      }
+    }
+
+    // Fall back to first option if none selected
+    if (!selected.value && options.length > 0) {
+      selected = options[0];
+    }
+
+    return { selected, options };
+  }
+
+  parseStatusTable(html) {
+    // Parse the status table: State, Track, Tracks, Limits/Apod, Mode, Filter, Shaper, Output, Offload
+    const tableRegex = /<tr><th>State<\/th>.*?<\/tr>\s*<tr><td>(.*?)<\/td><td>(.*?)<\/td><td>(.*?)<\/td><td>(.*?)<\/td><td>(.*?)<\/td><td>(.*?)<\/td><td>(.*?)<\/td><td>(.*?)<\/td><td>(.*?)<\/td><\/tr>/is;
+    const match = html.match(tableRegex);
+    if (!match) return null;
+    return {
+      state: match[1].trim(),
+      track: match[2].trim(),
+      tracks: match[3].trim(),
+      limits: match[4].trim(),
+      activeMode: match[5].trim(),
+      activeFilter: match[6].trim(),
+      activeShaper: match[7].trim(),
+      output: match[8].trim(),
+      offload: match[9].trim(),
+    };
+  }
+
+  parseVolume(html) {
+    // Parse volume slider: <input type="range" id="volume" name="volume" min="-39" max="0" step="1" value="-12"/>
+    const volumeRegex = /<input[^>]*name\s*=\s*["']volume["'][^>]*>/i;
+    const match = html.match(volumeRegex);
+    if (!match) return null;
+
+    const tag = match[0];
+    const value = parseFloat(this.getAttribute(tag, "value")) || 0;
+    const min = parseFloat(this.getAttribute(tag, "min")) || -60;
+    const max = parseFloat(this.getAttribute(tag, "max")) || 0;
+
+    // Fixed volume typically shows as -3 to 0 range
+    const isFixed = (max - min) <= 6;
+
+    return { value, min, max, isFixed };
+  }
+
+  async fetchPipeline() {
+    // Root page doesn't require auth
+    const response = await this.makeRequest("/", { method: "GET", headers: this.baseHeaders() });
+    if (response.statusCode >= 400) {
+      throw new Error(`Failed to load HQPlayer main page (${response.statusCode}).`);
+    }
+
+    const html = response.body;
+    const status = this.parseStatusTable(html);
+    const volume = this.parseVolume(html);
+    const mode = this.parseSelectOptions(html, "mode");
+    const filter1x = this.parseSelectOptions(html, "filter1x");
+    const filterNx = this.parseSelectOptions(html, "filterNx");
+    const shaper = this.parseSelectOptions(html, "shaper");
+    const samplerate = this.parseSelectOptions(html, "samplerate");
+
+    return {
+      status,
+      volume,
+      settings: {
+        mode,
+        filter1x,
+        filterNx,
+        shaper,
+        samplerate,
+      },
+    };
+  }
+
   async loadProfile(profileValue) {
     if (profileValue === undefined || profileValue === null) {
       throw new Error("Profile value is required");

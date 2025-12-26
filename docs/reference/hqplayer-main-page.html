@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en" translate="no" class="notranslate">
+<head>
+<meta charset="UTF-8"/>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+<meta name="google" content="notranslate"/>
+<link rel="stylesheet" type="text/css" href="/files/default.css" media="screen"/>
+<title>Signalyst HQPlayer Embedded - Muness Castle</title>
+</head>
+<body>
+<div class="container">
+<div class="content">
+<div class="header"><div class="title"><h1>Signalyst HQPlayer Embedded</h1></div></div>
+<div class="menubar"><table style="width:100%"><tr><td><a href="/">Main</a></td><td><a href="/input">Input</a></td><td><a href="/library">Library</a></td><td><a href="/config">Configuration</a></td><td><a href="/speakers">Speakers</a></td><td><a href="/convolution">Convolution</a></td><td><a href="/matrix">Matrix</a></td><td><a href="/backup">Backup</a></td><td><a href="/restore">Restore</a></td><td><a href="/about">About</a></td><td><a href="/auth">Authentication</a></td><td><a href="/key">Key</a></td><td><a href="/log">Log</a></td></tr></table></div>
+<p><table style="width:100%">
+<tr><th>State</th><th>Track</th><th>Tracks</th><th>Limits / Apod</th><th>Mode</th><th>Filter</th><th>Shaper</th><th>Output</th><th>Offload</th></tr>
+<tr><td>Stopped</td><td>0</td><td>0</td><td>0 / 0</td><td>SDM (DSD)</td><td>poly-sinc-gauss-hires-lp</td><td>ASDM7EC-fast</td><td>384000/1/2</td><td> </td></tr>
+</table></p>
+<p><table style="width:100%">
+<tr><th>Length</th><th>Artist</th><th>Composer</th><th>Performer</th><th>Album</th><th>Song</th><th>Format</th></tr>
+<tr><td>0:00</td><td></td><td></td><td></td><td></td><td></td><td>0/0/0</td></tr>
+</table></p>
+<div class="cover">
+<img src="/cover/current">
+</div>
+<div class="clear"><span></span></div>
+<center><a href="/control?action=previous"><img src="/files/prev.svg"></a> <a href="/control?action=play"><img src="/files/play.svg"></a> <a href="/control?action=pause"><img src="/files/pause.svg"></a> <a href="/control?action=stop"><img src="/files/stop.svg"></a> <a href="/control?action=next"><img src="/files/next.svg"></a></center>
+<div class="clear"><span></span></div>
+<form method="post" oninput="curvol.value=volume.valueAsNumber; submit();" target="volframe">
+<div class="item">
+<h3>Volume (dB)</h3>
+<br>-39<input type="range" id="volume" name="volume" min="-39" max="0" step="1" value="-12"/>
+0<br><center><b><output name="curvol" for="volume">-12</output></b></center>
+</div>
+</form>
+<iframe style="visibility:hidden; width:0; height:0; border:none;" name="volframe" id="volframe"></iframe>
+<form method="post" oninput="submit();">
+<div class="item">
+<h3>Mode</h3>
+<br><select name="mode">
+<option value="-1">[source]</option>
+<option value="0">PCM</option>
+<option value="1" selected>SDM (DSD)</option>
+</select>
+</div>
+<div class="item">
+<h3>1x Oversampling</h3>
+<br><select name="filter1x">
+<option value="64">IIR</option>
+<option value="65">IIR2</option>
+<option value="61">FIR</option>
+<option value="62">asymFIR</option>
+<option value="63">minphaseFIR</option>
+<option value="60">FFT</option>
+<option value="0">poly-sinc-lp</option>
+<option value="1">poly-sinc-mp</option>
+<option value="2">poly-sinc-short-lp</option>
+<option value="3">poly-sinc-short-mp</option>
+<option value="24">poly-sinc-long-lp</option>
+<option value="25">poly-sinc-long-ip</option>
+<option value="26">poly-sinc-long-mp</option>
+<option value="5">poly-sinc-hb</option>
+<option value="56">poly-sinc-hb-xs-2s</option>
+<option value="57">poly-sinc-hb-s-2s</option>
+<option value="58">poly-sinc-hb-m-2s</option>
+<option value="59">poly-sinc-hb-l-2s</option>
+<option value="11">poly-sinc-ext</option>
+<option value="22">poly-sinc-ext2</option>
+<option value="70">poly-sinc-ext2-short</option>
+<option value="71">poly-sinc-ext2-medium</option>
+<option value="72">poly-sinc-ext2-long</option>
+<option value="32">poly-sinc-ext2-xla</option>
+<option value="73">poly-sinc-ext2-xl</option>
+<option value="74">poly-sinc-ext2-hires-lp</option>
+<option value="75">poly-sinc-ext2-hires-ip</option>
+<option value="76">poly-sinc-ext2-hires-mp</option>
+<option value="14">poly-sinc-mqa/mp3-lp</option>
+<option value="15">poly-sinc-mqa/mp3-mp</option>
+<option value="17">poly-sinc-xtr-lp</option>
+<option value="18">poly-sinc-xtr-mp</option>
+<option value="34">poly-sinc-xtr-short-lp</option>
+<option value="35">poly-sinc-xtr-short-mp</option>
+<option value="6">poly-sinc-lp-2s</option>
+<option value="7">poly-sinc-mp-2s</option>
+<option value="8">poly-sinc-short-lp-2s</option>
+<option value="9">poly-sinc-short-mp-2s</option>
+<option value="27">poly-sinc-long-lp-2s</option>
+<option value="28">poly-sinc-long-ip-2s</option>
+<option value="29">poly-sinc-long-mp-2s</option>
+<option value="10">poly-sinc-hb-2s</option>
+<option value="19">poly-sinc-xtr-lp-2s</option>
+<option value="20">poly-sinc-xtr-mp-2s</option>
+<option value="36">poly-sinc-xtr-short-lp-2s</option>
+<option value="37">poly-sinc-xtr-short-mp-2s</option>
+<option value="38">poly-sinc-gauss-short</option>
+<option value="39">poly-sinc-gauss-medium</option>
+<option value="40" selected>poly-sinc-gauss-long</option>
+<option value="42">poly-sinc-gauss-xla</option>
+<option value="41">poly-sinc-gauss-xl</option>
+<option value="43">poly-sinc-gauss-hires-lp</option>
+<option value="44">poly-sinc-gauss-hires-ip</option>
+<option value="45">poly-sinc-gauss-hires-mp</option>
+<option value="54">poly-sinc-gauss-halfband</option>
+<option value="55">poly-sinc-gauss-halfband-s</option>
+<option value="66">polynomial-1</option>
+<option value="67">polynomial-2</option>
+<option value="4">minringFIR-lp</option>
+<option value="16">minringFIR-mp</option>
+<option value="12">closed-form</option>
+<option value="13">closed-form-fast</option>
+<option value="21">closed-form-16M</option>
+<option value="30">sinc-S</option>
+<option value="23">sinc-M</option>
+<option value="33">sinc-Mx</option>
+<option value="49">sinc-MG</option>
+<option value="50">sinc-MGa</option>
+<option value="31">sinc-L</option>
+<option value="46">sinc-Ls</option>
+<option value="47">sinc-Lm</option>
+<option value="48">sinc-Ll</option>
+<option value="68">sinc-Lh</option>
+<option value="51">sinc-short</option>
+<option value="52">sinc-medium</option>
+<option value="53">sinc-long</option>
+<option value="69">sinc-long-h</option>
+</select>
+</div>
+<div class="item">
+<h3>Nx Oversampling</h3>
+<br><select name="filterNx">
+<option value="64">IIR</option>
+<option value="65">IIR2</option>
+<option value="61">FIR</option>
+<option value="62">asymFIR</option>
+<option value="63">minphaseFIR</option>
+<option value="60">FFT</option>
+<option value="0">poly-sinc-lp</option>
+<option value="1">poly-sinc-mp</option>
+<option value="2">poly-sinc-short-lp</option>
+<option value="3">poly-sinc-short-mp</option>
+<option value="24">poly-sinc-long-lp</option>
+<option value="25">poly-sinc-long-ip</option>
+<option value="26">poly-sinc-long-mp</option>
+<option value="5">poly-sinc-hb</option>
+<option value="56">poly-sinc-hb-xs-2s</option>
+<option value="57">poly-sinc-hb-s-2s</option>
+<option value="58">poly-sinc-hb-m-2s</option>
+<option value="59">poly-sinc-hb-l-2s</option>
+<option value="11">poly-sinc-ext</option>
+<option value="22">poly-sinc-ext2</option>
+<option value="70">poly-sinc-ext2-short</option>
+<option value="71">poly-sinc-ext2-medium</option>
+<option value="72">poly-sinc-ext2-long</option>
+<option value="32">poly-sinc-ext2-xla</option>
+<option value="73">poly-sinc-ext2-xl</option>
+<option value="74">poly-sinc-ext2-hires-lp</option>
+<option value="75">poly-sinc-ext2-hires-ip</option>
+<option value="76">poly-sinc-ext2-hires-mp</option>
+<option value="14">poly-sinc-mqa/mp3-lp</option>
+<option value="15">poly-sinc-mqa/mp3-mp</option>
+<option value="17">poly-sinc-xtr-lp</option>
+<option value="18">poly-sinc-xtr-mp</option>
+<option value="34">poly-sinc-xtr-short-lp</option>
+<option value="35">poly-sinc-xtr-short-mp</option>
+<option value="6">poly-sinc-lp-2s</option>
+<option value="7">poly-sinc-mp-2s</option>
+<option value="8">poly-sinc-short-lp-2s</option>
+<option value="9">poly-sinc-short-mp-2s</option>
+<option value="27">poly-sinc-long-lp-2s</option>
+<option value="28">poly-sinc-long-ip-2s</option>
+<option value="29">poly-sinc-long-mp-2s</option>
+<option value="10">poly-sinc-hb-2s</option>
+<option value="19">poly-sinc-xtr-lp-2s</option>
+<option value="20">poly-sinc-xtr-mp-2s</option>
+<option value="36">poly-sinc-xtr-short-lp-2s</option>
+<option value="37">poly-sinc-xtr-short-mp-2s</option>
+<option value="38">poly-sinc-gauss-short</option>
+<option value="39">poly-sinc-gauss-medium</option>
+<option value="40">poly-sinc-gauss-long</option>
+<option value="42">poly-sinc-gauss-xla</option>
+<option value="41">poly-sinc-gauss-xl</option>
+<option value="43" selected>poly-sinc-gauss-hires-lp</option>
+<option value="44">poly-sinc-gauss-hires-ip</option>
+<option value="45">poly-sinc-gauss-hires-mp</option>
+<option value="54">poly-sinc-gauss-halfband</option>
+<option value="55">poly-sinc-gauss-halfband-s</option>
+<option value="66">polynomial-1</option>
+<option value="67">polynomial-2</option>
+<option value="4">minringFIR-lp</option>
+<option value="16">minringFIR-mp</option>
+<option value="12">closed-form</option>
+<option value="13">closed-form-fast</option>
+<option value="21">closed-form-16M</option>
+<option value="30">sinc-S</option>
+<option value="23">sinc-M</option>
+<option value="33">sinc-Mx</option>
+<option value="49">sinc-MG</option>
+<option value="50">sinc-MGa</option>
+<option value="31">sinc-L</option>
+<option value="46">sinc-Ls</option>
+<option value="47">sinc-Lm</option>
+<option value="48">sinc-Ll</option>
+<option value="68">sinc-Lh</option>
+<option value="51">sinc-short</option>
+<option value="52">sinc-medium</option>
+<option value="53">sinc-long</option>
+<option value="69">sinc-long-h</option>
+</select>
+</div>
+<div class="item">
+<h3>Modulator</h3>
+<br><select name="shaper">
+<option value="0">DSD5</option>
+<option value="1">DSD5v2</option>
+<option value="3">DSD5v2 256+fs</option>
+<option value="9">DSD5EC</option>
+<option value="5">ASDM5</option>
+<option value="10">ASDM5EC</option>
+<option value="13">ASDM5ECv2</option>
+<option value="15">ASDM5ECv3</option>
+<option value="28">ASDM5EC-ul</option>
+<option value="17">ASDM5EC-light</option>
+<option value="32">ASDM5EC-fast</option>
+<option value="19">ASDM5EC-super</option>
+<option value="30">ASDM5EC-ul 512+fs</option>
+<option value="21">ASDM5EC-light 512+fs</option>
+<option value="34">ASDM5EC-fast 512+fs</option>
+<option value="23">ASDM5EC-super 512+fs</option>
+<option value="2">DSD7</option>
+<option value="4">DSD7 256+fs</option>
+<option value="6">ASDM7</option>
+<option value="11">ASDM7EC</option>
+<option value="14">ASDM7ECv2</option>
+<option value="16">ASDM7ECv3</option>
+<option value="29">ASDM7EC-ul</option>
+<option value="18">ASDM7EC-light</option>
+<option value="33" selected>ASDM7EC-fast</option>
+<option value="20">ASDM7EC-super</option>
+<option value="31">ASDM7EC-ul 512+fs</option>
+<option value="22">ASDM7EC-light 512+fs</option>
+<option value="35">ASDM7EC-fast 512+fs</option>
+<option value="24">ASDM7EC-super 512+fs</option>
+<option value="7">AMSDM7 512+fs</option>
+<option value="12">AMSDM7EC 512+fs</option>
+<option value="26">AHM5EC5L</option>
+<option value="8">AHM7EC5L</option>
+<option value="27">AHM5EC8B</option>
+<option value="25">AHM7EC8B</option>
+</select>
+</div>
+<div class="item">
+<h3>Samplerate</h3>
+<br><select name="samplerate">
+<option selected value="0">Auto</option>
+<option value="2822400">2822400</option>
+<option value="5644800">5644800</option>
+<option value="11289600">11289600</option>
+<option value="22579200">22579200</option>
+<option value="45158400">45158400</option>
+</select>
+</div>
+</form>
+<div class="clear"><span></span></div>
+<p><table style="width:100%">
+<tr><th></th><th>#</th><th>Length</th><th>Artist</th><th>Album</th><th>Song</th></tr>
+<tr class="selected"><td>1</td><td></td><td>0:00</td><td></td><td></td><td>Roon</td></tr>
+</table>
+<div class="clear"><span></span></div>
+<div class="clear"><span></span></div>
+<div class="menubar"><table style="width:100%"><tr><td><a href="/">Main</a></td><td><a href="/input">Input</a></td><td><a href="/library">Library</a></td><td><a href="/config">Configuration</a></td><td><a href="/speakers">Speakers</a></td><td><a href="/convolution">Convolution</a></td><td><a href="/matrix">Matrix</a></td><td><a href="/backup">Backup</a></td><td><a href="/restore">Restore</a></td><td><a href="/about">About</a></td><td><a href="/auth">Authentication</a></td><td><a href="/key">Key</a></td><td><a href="/log">Log</a></td></tr></table></div>
+<div class="clear"><span></span></div>
+<div class="footer">Copyright (C) 1998-2025 Jussi Laako / Signalyst. All rights reserved.</div>
+</div>
+</div>
+</body>
+</html>

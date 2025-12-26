@@ -464,4 +464,16 @@ startUiServer({
   formatError: (error) => friendlyErrorMessage(error, (error && error.candidate) || config),
   missingCredentialsMessage: MISSING_CREDENTIALS_MESSAGE,
   isExpectingRestart: () => isRestartGraceActive(),
+  fetchPipeline: async () => {
+    if (!hasRequiredCredentials(config)) {
+      throw new Error(MISSING_CREDENTIALS_MESSAGE);
+    }
+    const client = new HQPClient({
+      host: config.host,
+      port: config.port,
+      username: config.username,
+      password: config.password,
+    });
+    return client.fetchPipeline();
+  },
 });

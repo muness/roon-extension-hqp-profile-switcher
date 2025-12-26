@@ -21,6 +21,7 @@ function startUiServer(options) {
     formatError,
     missingCredentialsMessage,
     isExpectingRestart = () => false,
+    fetchPipeline = null,
   } = options;
 
   const credentialsMessage =
@@ -57,6 +58,10 @@ function startUiServer(options) {
           credentialsMessage,
           isExpectingRestart,
         });
+      }
+
+      if (req.method === "GET" && pathname === "/api/pipeline") {
+        return handlePipeline(res, fetchPipeline, formatError);
       }
 
       if (req.method === "GET" && pathname === "/favicon.ico") {
@@ -218,6 +223,21 @@ async function handleLoad(req, res, options) {
       message = credentialsMessage;
     }
     sendJson(res, statusCode, { error: message });
+  }
+}
+
+async function handlePipeline(res, fetchPipeline, formatError) {
+  if (!fetchPipeline) {
+    sendJson(res, 501, { error: "Pipeline info not available" });
+    return;
+  }
+
+  try {
+    const pipeline = await fetchPipeline();
+    sendJson(res, 200, pipeline);
+  } catch (error) {
+    const message = formatError ? formatError(error) : error.message;
+    sendJson(res, 502, { error: message });
   }
 }
 

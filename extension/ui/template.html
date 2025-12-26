@@ -2,6 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HQPlayer Profile Switcher</title>
     <style>
       :root {
@@ -9,36 +10,142 @@
         font-family: system-ui, -apple-system, Segoe UI, sans-serif;
         background: #101418;
         color: #f5f5f5;
+        --accent: #00b4d8;
+        --accent-dim: rgba(0, 180, 216, 0.35);
       }
+      * { box-sizing: border-box; }
       body {
         margin: 0;
-        padding: 2.5rem 1.25rem;
-        display: flex;
-        justify-content: center;
+        padding: 1rem;
+        min-height: 100vh;
       }
       main {
-        width: min(640px, 100%);
+        max-width: 640px;
+        margin: 0 auto;
         background: rgba(255, 255, 255, 0.04);
-        padding: 2rem;
+        padding: 1.25rem;
         border-radius: 16px;
         box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
         backdrop-filter: blur(18px);
       }
       h1 {
-        margin-top: 0;
-        font-size: 1.75rem;
-        letter-spacing: 0.05em;
+        margin: 0 0 1rem;
+        font-size: 1.5rem;
+        letter-spacing: 0.03em;
+      }
+      h2 {
+        margin: 0 0 0.75rem;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--accent);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      h2::before {
+        content: '';
+        flex: 0 0 1.25rem;
+        height: 1.25rem;
+        background: currentColor;
+        mask-size: contain;
+        mask-repeat: no-repeat;
+        mask-position: center;
+        -webkit-mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+      }
+      h2.pipeline::before {
+        mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4'/%3E%3C/svg%3E");
+        -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4'/%3E%3C/svg%3E");
+      }
+      h2.profiles::before {
+        mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10'/%3E%3C/svg%3E");
+        -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10'/%3E%3C/svg%3E");
       }
       section {
-        margin-bottom: 1.5rem;
+        margin-bottom: 1.25rem;
       }
+      .card {
+        border-radius: 12px;
+        padding: 1rem;
+        background: rgba(12, 18, 24, 0.7);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .pipeline-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+      }
+      @media (min-width: 480px) {
+        .pipeline-grid {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+      .setting-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+      }
+      .setting-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: rgba(245, 245, 245, 0.5);
+      }
+      .setting-value {
+        font-size: 0.95rem;
+        color: var(--accent);
+        word-break: break-word;
+      }
+      .volume-bar {
+        margin-top: 0.75rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .volume-display {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+      .volume-level {
+        flex: 1;
+        height: 6px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 3px;
+        overflow: hidden;
+      }
+      .volume-fill {
+        height: 100%;
+        background: var(--accent);
+        border-radius: 3px;
+        transition: width 0.3s;
+      }
+      .volume-text {
+        font-size: 0.9rem;
+        min-width: 4rem;
+        text-align: right;
+      }
+      .status-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        font-size: 0.85rem;
+      }
+      .status-row:last-child { border-bottom: none; }
+      .status-label { color: rgba(245, 245, 245, 0.5); }
+      .status-value { color: #f5f5f5; }
+      .status-value.playing { color: #4ade80; }
+      .status-value.stopped { color: rgba(245, 245, 245, 0.4); }
       label {
         display: block;
         font-weight: 600;
         margin-bottom: 0.35rem;
+        font-size: 0.9rem;
       }
-      select,
-      button {
+      select, button {
         width: 100%;
         padding: 0.65rem 0.75rem;
         border-radius: 10px;
@@ -56,72 +163,118 @@
         text-transform: uppercase;
         letter-spacing: 0.05em;
       }
-      button:hover {
-        filter: brightness(1.1);
-      }
-      #status {
-        border-radius: 12px;
-        padding: 1rem;
-        margin-bottom: 1.5rem;
-        background: rgba(12, 18, 24, 0.7);
-        border: 1px solid rgba(0, 180, 216, 0.35);
-      }
-      #status.error {
-        border-color: rgba(255, 107, 107, 0.55);
-        background: rgba(86, 21, 29, 0.4);
-      }
+      button:hover { filter: brightness(1.1); }
+      button:active { transform: scale(0.98); }
       .banner {
         border-radius: 12px;
         padding: 0.75rem 1rem;
         margin-bottom: 1rem;
         background: rgba(23, 35, 45, 0.6);
         border: 1px solid rgba(150, 200, 255, 0.25);
-        font-size: 0.95rem;
-        display: block;
+        font-size: 0.9rem;
       }
       .banner.error {
         border-color: rgba(255, 80, 80, 0.5);
         background: rgba(80, 20, 20, 0.55);
       }
-      .banner.hidden {
-        display: none;
-      }
+      .banner.hidden { display: none; }
       .meta {
         display: grid;
         gap: 0.4rem;
-        margin-top: 0.75rem;
-        font-size: 0.9rem;
-        color: rgba(245, 245, 245, 0.64);
+        font-size: 0.85rem;
+        color: rgba(245, 245, 245, 0.5);
       }
       footer {
-        margin-top: 2rem;
-        font-size: 0.85rem;
-        color: rgba(245, 245, 245, 0.45);
+        margin-top: 1.5rem;
+        font-size: 0.8rem;
+        color: rgba(245, 245, 245, 0.35);
         text-align: center;
       }
-      a {
-        color: #00b4d8;
+      a { color: var(--accent); }
+      .hidden { display: none !important; }
+      .loading {
+        text-align: center;
+        padding: 1rem;
+        color: rgba(245, 245, 245, 0.4);
       }
     </style>
   </head>
   <body>
     <main>
-      <h1>HQPlayer Profile Switcher</h1>
+      <h1>HQPlayer</h1>
       <section id="banner" class="banner hidden"></section>
-      <section id="status" class="meta">Loading status...</section>
+
+      <section id="pipeline-section">
+        <h2 class="pipeline">Audio Pipeline</h2>
+        <div class="card">
+          <div id="pipeline-loading" class="loading">Loading pipeline...</div>
+          <div id="pipeline-content" class="hidden">
+            <div class="pipeline-grid">
+              <div class="setting-item">
+                <span class="setting-label">Mode</span>
+                <span class="setting-value" id="pipe-mode">-</span>
+              </div>
+              <div class="setting-item">
+                <span class="setting-label">Rate</span>
+                <span class="setting-value" id="pipe-rate">-</span>
+              </div>
+              <div class="setting-item">
+                <span class="setting-label">Filter 1x</span>
+                <span class="setting-value" id="pipe-filter1x">-</span>
+              </div>
+              <div class="setting-item">
+                <span class="setting-label">Filter Nx</span>
+                <span class="setting-value" id="pipe-filterNx">-</span>
+              </div>
+              <div class="setting-item">
+                <span class="setting-label">Dither</span>
+                <span class="setting-value" id="pipe-shaper">-</span>
+              </div>
+              <div class="setting-item">
+                <span class="setting-label">Output</span>
+                <span class="setting-value" id="pipe-output">-</span>
+              </div>
+            </div>
+            <div class="volume-bar" id="volume-section">
+              <div class="volume-display">
+                <span class="setting-label">Volume</span>
+                <div class="volume-level">
+                  <div class="volume-fill" id="volume-fill" style="width: 50%"></div>
+                </div>
+                <span class="volume-text" id="volume-text">-12 dB</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="status-section">
+        <div class="card">
+          <div class="status-row">
+            <span class="status-label">State</span>
+            <span class="status-value" id="status-state">-</span>
+          </div>
+          <div class="status-row">
+            <span class="status-label">Connection</span>
+            <span class="status-value" id="status-connection">-</span>
+          </div>
+        </div>
+      </section>
+
       <section>
+        <h2 class="profiles">Profiles</h2>
         <form id="profile-form">
-          <label for="profile-select">Available Profiles</label>
           <select id="profile-select" name="profile">
             <option value="">Loading...</option>
           </select>
           <button type="submit">Load Profile</button>
         </form>
       </section>
+
       <section class="meta" id="connection-info"></section>
       <footer>
-        Served by the embedded web UI (port {{UI_PORT}}) - Roon extension port {{ROON_PORT}}.<br>
-        Configure credentials via Roon -> Settings -> Extensions.
+        Web UI port {{UI_PORT}} &middot; Roon port {{ROON_PORT}}<br>
+        Configure via Roon &rarr; Settings &rarr; Extensions
       </footer>
     </main>
     <script>
