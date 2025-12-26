@@ -403,8 +403,24 @@ class HQPClient {
   }
 
   async setPipelineSetting(name, value) {
-    // POST to root page to change a setting
-    const payload = new URLSearchParams({ [name]: value }).toString();
+    // HQPlayer requires ALL form fields to be submitted together
+    // First fetch current values, then update the one being changed
+    const pipeline = await this.fetchPipeline();
+    const settings = pipeline.settings || {};
+
+    // Build payload with all current selected values
+    const formData = {
+      mode: settings.mode?.selected?.value || "0",
+      samplerate: settings.samplerate?.selected?.value || "0",
+      filter1x: settings.filter1x?.selected?.value || "0",
+      filterNx: settings.filterNx?.selected?.value || "0",
+      shaper: settings.shaper?.selected?.value || "0",
+    };
+
+    // Update the setting being changed
+    formData[name] = value;
+
+    const payload = new URLSearchParams(formData).toString();
     const response = await this.request("/", {
       method: "POST",
       headers: {
